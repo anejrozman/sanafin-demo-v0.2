@@ -11,7 +11,7 @@ import OutcomeReports from './components/OutcomeReports';
 import CohortAnalysis from './components/CohortAnalysis';
 import ContractPerformance from './components/ContractPerformance';
 import DataUpload from './components/DataUpload';
-import WelcomeModal, { useWelcomeModal } from './components/WelcomeModal';
+import WelcomePage, { useWelcomeModal } from './components/WelcomeModal';
 
 /* MARKER-MAKE-KIT-INVOKED */
 
@@ -97,7 +97,7 @@ function AppHeader({ onHowItWorks }: { onHowItWorks: () => void }) {
 }
 
 function AppShell() {
-  const { open, close, reopen, isFirstLoad } = useWelcomeModal();
+  const { open, close, reopen } = useWelcomeModal();
   const navigate = useNavigate();
   const [triggerSample, setTriggerSample] = useState(false);
 
@@ -132,7 +132,7 @@ function AppShell() {
           </main>
         </div>
       </div>
-      <WelcomeModal open={open} onClose={close} onStartUpload={handleStartUpload} fullPage={isFirstLoad} />
+      <WelcomePage open={open} onClose={close} onStartUpload={handleStartUpload} />
     </SidebarProvider>
   );
 }
