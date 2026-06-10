@@ -58,17 +58,17 @@ function Connector({ active, animated }: { active: boolean; animated: boolean })
         <path
           ref={pathRef}
           d="M 0 20 C 20 20, 44 20, 64 20"
-          stroke={active ? '#6366f1' : '#e2e8f0'}
+          stroke={active ? '#55B4A6' : '#e8e0d8'}
           strokeWidth="2"
           strokeLinecap="round"
           fill="none"
         />
         {/* Arrowhead */}
         {active && (
-          <polygon points="58,15 64,20 58,25" fill="#6366f1" />
+          <polygon points="58,15 64,20 58,25" fill="#55B4A6" />
         )}
         {!active && (
-          <polygon points="58,15 64,20 58,25" fill="#e2e8f0" />
+          <polygon points="58,15 64,20 58,25" fill="#e8e0d8" />
         )}
       </svg>
     </div>
@@ -100,9 +100,9 @@ function WorkflowNode({
       className={`
         relative flex flex-col items-center gap-3 rounded-2xl border-2 p-6
         w-52 text-left transition-all
-        ${status === 'pending' ? 'border-slate-200 bg-white opacity-50 cursor-not-allowed' : ''}
-        ${status === 'running' ? `border-indigo-300 bg-indigo-50 shadow-md` : ''}
-        ${status === 'done' ? `${color.ring} bg-white shadow-sm hover:shadow-md cursor-pointer` : ''}
+        ${status === 'pending' ? 'border-border bg-background opacity-50 cursor-not-allowed' : ''}
+        ${status === 'running' ? `border-brand-teal/40 bg-brand-teal/10 shadow-md` : ''}
+        ${status === 'done' ? `${color.ring} bg-background shadow-sm hover:shadow-md cursor-pointer` : ''}
       `}
       whileHover={status === 'done' ? { scale: 1.02 } : {}}
       whileTap={status === 'done' ? { scale: 0.98 } : {}}
@@ -110,7 +110,7 @@ function WorkflowNode({
       {/* Status dot */}
       <div className="absolute top-3 right-3">
         {status === 'running' && (
-          <Loader2 className="size-4 text-indigo-500 animate-spin" />
+          <Loader2 className="size-4 text-brand-teal animate-spin" />
         )}
         {status === 'done' && (
           <CheckCircle className="size-4 text-emerald-500" />
@@ -118,13 +118,13 @@ function WorkflowNode({
       </div>
 
       {/* Icon */}
-      <div className={`size-12 rounded-xl ${status === 'done' ? color.bg : 'bg-slate-100'} flex items-center justify-center`}>
-        <Icon className={`size-6 ${status === 'done' ? color.icon : 'text-slate-400'}`} />
+      <div className={`size-12 rounded-xl ${status === 'done' ? color.bg : 'bg-muted'} flex items-center justify-center`}>
+        <Icon className={`size-6 ${status === 'done' ? color.icon : 'text-muted-foreground'}`} />
       </div>
 
       {/* Label */}
       <div>
-        <p className={`font-semibold text-sm ${status === 'done' ? color.text : 'text-slate-400'}`}>{label}</p>
+        <p className={`font-semibold text-sm ${status === 'done' ? color.text : 'text-muted-foreground'}`}>{label}</p>
       </div>
 
       {/* Summary */}
@@ -153,19 +153,19 @@ function InjectionDrawer({ filename }: { filename: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="rounded-lg bg-muted p-3">
           <p className="text-xs text-muted-foreground">Source</p>
           <p className="font-medium mt-0.5">{filename}</p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="rounded-lg bg-muted p-3">
           <p className="text-xs text-muted-foreground">Format</p>
           <p className="font-medium mt-0.5">CSV / FHIR JSON</p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="rounded-lg bg-muted p-3">
           <p className="text-xs text-muted-foreground">Patients ingested</p>
           <p className="font-medium mt-0.5">{patients.length}</p>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="rounded-lg bg-muted p-3">
           <p className="text-xs text-muted-foreground">Status</p>
           <Badge className="bg-emerald-600 text-white mt-0.5">Complete</Badge>
         </div>
@@ -174,7 +174,7 @@ function InjectionDrawer({ filename }: { filename: string }) {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Detected columns</p>
         <div className="flex flex-wrap gap-1.5">
           {['patient_id', 'HbA1c_baseline', 'HbA1c_followup', 'CGM_time_in_range', 'date'].map(col => (
-            <code key={col} className="text-xs bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5">{col}</code>
+            <code key={col} className="text-xs bg-muted border border-border rounded px-1.5 py-0.5">{col}</code>
           ))}
         </div>
       </div>
@@ -183,7 +183,7 @@ function InjectionDrawer({ filename }: { filename: string }) {
         <div className="rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-muted">
                 <TableHead className="text-xs">patient_id</TableHead>
                 <TableHead className="text-xs">HbA1c</TableHead>
                 <TableHead className="text-xs">CGM_TIR</TableHead>
@@ -219,7 +219,7 @@ function VerificationDrawer() {
     <div className="space-y-4">
       <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm">
         <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-2">Contract rule</p>
-        <code className="text-xs block bg-white border border-violet-100 rounded p-3 leading-relaxed">
+        <code className="text-xs block bg-background border border-violet-100 rounded p-3 leading-relaxed">
           IF HbA1c_drop ≥ {THRESHOLD} pct_points<br />
           → T2D Prevention Success → <span className="text-emerald-600 font-semibold">ELIGIBLE FOR PAYOUT</span><br />
           ELSE → <span className="text-red-500 font-semibold">FLAGGED</span>
@@ -240,7 +240,7 @@ function VerificationDrawer() {
         <div className="rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-muted">
                 <TableHead className="text-xs">Patient</TableHead>
                 <TableHead className="text-xs">HbA1c drop</TableHead>
                 <TableHead className="text-xs">Verdict</TableHead>
@@ -298,7 +298,7 @@ function PayoutDrawer() {
         <div className="rounded-lg border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-muted">
                 <TableHead className="text-xs">Patient</TableHead>
                 <TableHead className="text-xs">Amount (CHF)</TableHead>
                 <TableHead className="text-xs">From</TableHead>
@@ -318,7 +318,7 @@ function PayoutDrawer() {
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow className="bg-slate-50 font-semibold">
+              <TableRow className="bg-muted font-semibold">
                 <TableCell className="text-xs">Total</TableCell>
                 <TableCell className="text-xs text-emerald-700">CHF {total.toLocaleString()}</TableCell>
                 <TableCell />
@@ -380,7 +380,7 @@ export default function WorkflowView({ filename }: WorkflowViewProps) {
       color: { ring: 'border-blue-200', bg: 'bg-blue-50', icon: 'text-blue-600', text: 'text-blue-700' },
       summary: (
         <>
-          <p className="font-semibold text-slate-700">CSV / FHIR JSON</p>
+          <p className="font-semibold text-foreground">CSV / FHIR JSON</p>
           <p>{patients.length} patients ingested</p>
         </>
       ),
@@ -419,7 +419,7 @@ export default function WorkflowView({ filename }: WorkflowViewProps) {
       </div>
 
       {/* Workflow canvas */}
-      <div className="flex items-center justify-center py-10 px-6 rounded-2xl border bg-slate-50 gap-0">
+      <div className="flex items-center justify-center py-10 px-6 rounded-2xl border bg-muted gap-0">
         {nodes.map((node, i) => (
           <div key={node.id} className="flex items-center">
             <WorkflowNode

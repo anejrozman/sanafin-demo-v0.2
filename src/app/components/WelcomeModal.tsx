@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { ArrowRight, Database, ShieldCheck, Banknote } from 'lucide-react';
+import sanafinLogo from '../../assets/sanafin_logo.png';
 
 interface WelcomePageProps {
   open: boolean;
@@ -12,26 +13,26 @@ const steps = [
   {
     icon: Database,
     label: 'Data Injection',
-    color: 'bg-blue-600',
-    textColor: 'text-blue-600',
-    borderColor: 'border-blue-200',
-    bg: 'bg-blue-50',
+    color: 'bg-brand-teal',
+    textColor: 'text-brand-teal',
+    borderColor: 'border-brand-teal/30',
+    bg: 'bg-brand-teal/10',
   },
   {
     icon: ShieldCheck,
     label: 'Verification',
-    color: 'bg-violet-600',
-    textColor: 'text-violet-600',
-    borderColor: 'border-violet-200',
-    bg: 'bg-violet-50',
+    color: 'bg-brand-amber',
+    textColor: 'text-brand-amber',
+    borderColor: 'border-brand-amber/30',
+    bg: 'bg-brand-amber/10',
   },
   {
     icon: Banknote,
     label: 'Payout',
-    color: 'bg-emerald-600',
-    textColor: 'text-emerald-600',
-    borderColor: 'border-emerald-200',
-    bg: 'bg-emerald-50',
+    color: 'bg-brand-teal',
+    textColor: 'text-brand-teal',
+    borderColor: 'border-brand-teal/30',
+    bg: 'bg-brand-teal/10',
   },
 ];
 
@@ -41,14 +42,9 @@ export default function WelcomePage({ open, onClose, onStartUpload }: WelcomePag
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-8 text-white flex-1 flex flex-col justify-center items-center text-center">
-        <div className="flex items-center gap-2 mb-6 justify-center">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-semibold text-sm">S</span>
-          </div>
-          <span className="font-semibold tracking-tight">SanaFin</span>
-        </div>
-        <p className="text-slate-100 leading-relaxed text-2xl max-w-md">
+      <div className="bg-background px-8 flex-1 flex flex-col justify-center items-center text-center border-b border-border">
+        <img src={sanafinLogo} alt="SanaFin" className="h-30 w-auto mb-6" />
+        <p className="text-foreground leading-relaxed text-2xl max-w-md">
           Get paid automatically when your patients' outcomes meet contract targets.
         </p>
       </div>

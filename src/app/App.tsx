@@ -6,6 +6,7 @@ import {
 } from './components/ui/sidebar';
 import { Button } from './components/ui/button';
 import { Home, FileText, Users, Target, Upload, HelpCircle } from 'lucide-react';
+import sanafinLogo from '../assets/sanafin_logo.png';
 import Dashboard from './components/Dashboard';
 import OutcomeReports from './components/OutcomeReports';
 import CohortAnalysis from './components/CohortAnalysis';
@@ -45,12 +46,7 @@ function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border">
       <SidebarContent>
         <div className="px-6 py-5">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-semibold text-sm">S</span>
-            </div>
-            <span className="font-semibold text-foreground tracking-tight">SanaFin</span>
-          </div>
+          <img src={sanafinLogo} alt="SanaFin" className="h-7 w-auto" />
         </div>
 
         {navGroups.map(group => (

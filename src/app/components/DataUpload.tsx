@@ -179,7 +179,7 @@ export default function DataUpload({ triggerSampleUpload, onSampleConsumed }: Da
                   Cohort processing started
                 </CardTitle>
                 <CardDescription>
-                  <span className="font-mono text-xs bg-slate-100 rounded px-1.5 py-0.5">{processedFilename}</span>
+                  <span className="font-mono text-xs bg-muted rounded px-1.5 py-0.5">{processedFilename}</span>
                   {' '}— watching pipeline run
                 </CardDescription>
               </CardHeader>
