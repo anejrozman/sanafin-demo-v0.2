@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -95,12 +94,10 @@ function AppHeader({ onHowItWorks }: { onHowItWorks: () => void }) {
 function AppShell() {
   const { open, close, reopen } = useWelcomeModal();
   const navigate = useNavigate();
-  const [triggerSample, setTriggerSample] = useState(false);
 
   const handleStartUpload = () => {
     close();
     navigate('/upload');
-    setTriggerSample(true);
   };
 
   const handleGoToUpload = () => {
@@ -125,15 +122,7 @@ function AppShell() {
               <Route path="/reports" element={<OutcomeReports />} />
               <Route path="/cohort" element={<CohortAnalysis />} />
               <Route path="/contract" element={<ContractPerformance />} />
-              <Route
-                path="/upload"
-                element={
-                  <DataUpload
-                    triggerSampleUpload={triggerSample}
-                    onSampleConsumed={() => setTriggerSample(false)}
-                  />
-                }
-              />
+              <Route path="/upload" element={<DataUpload />} />
             </Routes>
           </main>
         </div>

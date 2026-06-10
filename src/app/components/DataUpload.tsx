@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -10,12 +10,7 @@ import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
 
-interface DataUploadProps {
-  triggerSampleUpload?: boolean;
-  onSampleConsumed?: () => void;
-}
-
-export default function DataUpload({ triggerSampleUpload, onSampleConsumed }: DataUploadProps) {
+export default function DataUpload() {
   const { patients, dataSource, thresholds, isLoading, setUploadedPatients, clearUploadedData } = useData();
   const location = useLocation();
   const navTab = (location.state as { initialTab?: string } | null)?.initialTab;
@@ -29,14 +24,6 @@ export default function DataUpload({ triggerSampleUpload, onSampleConsumed }: Da
   const [processed, setProcessed] = useState(false);
   const [processedFilename, setProcessedFilename] = useState('');
   const [parseError, setParseError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (triggerSampleUpload && !processed && !isLoading) {
-      handleSampleUpload();
-      onSampleConsumed?.();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerSampleUpload, isLoading]);
 
   function handleSampleUpload() {
     if (dataSource === 'uploaded') {
