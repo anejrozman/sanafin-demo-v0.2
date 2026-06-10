@@ -103,6 +103,16 @@ function AppShell() {
     setTriggerSample(true);
   };
 
+  const handleGoToUpload = () => {
+    close();
+    navigate('/upload');
+  };
+
+  const handleGoToDashboard = () => {
+    close();
+    navigate('/');
+  };
+
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
@@ -128,7 +138,7 @@ function AppShell() {
           </main>
         </div>
       </div>
-      <WelcomePage open={open} onClose={close} onStartUpload={handleStartUpload} />
+      <WelcomePage open={open} onStartUpload={handleStartUpload} onGoToUpload={handleGoToUpload} onGoToDashboard={handleGoToDashboard} />
     </SidebarProvider>
   );
 }

@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Button } from './ui/button';
 import { ArrowRight, Database, ShieldCheck, Banknote } from 'lucide-react';
 import sanafinLogo from '../../assets/sanafin_logo.png';
 
 interface WelcomePageProps {
   open: boolean;
-  onClose: () => void;
   onStartUpload: () => void;
+  onGoToUpload: () => void;
+  onGoToDashboard: () => void;
 }
 
 const steps = [
@@ -36,17 +37,24 @@ const steps = [
   },
 ];
 
-export default function WelcomePage({ open, onClose, onStartUpload }: WelcomePageProps) {
+export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToDashboard }: WelcomePageProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* Header */}
-      <div className="bg-background px-8 flex-1 flex flex-col justify-center items-center text-center border-b border-border">
-        <img src={sanafinLogo} alt="SanaFin" className="h-30 w-auto mb-6" />
-        <p className="text-foreground leading-relaxed text-2xl max-w-md">
-          Get paid automatically when your patients' outcomes meet contract targets.
-        </p>
+      <div className="bg-background px-16 flex-1 flex flex-row justify-center items-center gap-16 border-b border-border">
+        <img src={sanafinLogo} alt="SanaFin" className="h-50 w-auto flex-shrink-0" />
+        <div className="flex flex-col gap-4 max-w-2xl text-left">
+          <p className="text-foreground leading-relaxed text-xl">
+            SanaFin turns patient data into contract-ready evidence for outcome-based contracts.
+            It automates verifying, and reporting results for payers and healthcare providers.
+          </p>
+          <p className="text-foreground leading-relaxed text-xl">
+            The demo focuses on outcome verification and reporting, demonstrating how trusted
+            evidence becomes the foundation for outcome-based contracts.
+          </p>
+        </div>
       </div>
 
       {/* Three-step diagram */}
@@ -54,29 +62,31 @@ export default function WelcomePage({ open, onClose, onStartUpload }: WelcomePag
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           How it works
         </p>
-        <div className="flex items-center gap-1 w-full max-w-xl">
+        <div className="flex items-stretch gap-2 w-full max-w-2xl">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
-              <div key={step.label} className="flex items-center gap-1 flex-1">
-                <div className={`flex-1 flex flex-col items-center gap-2 rounded-xl border ${step.borderColor} ${step.bg} p-4`}>
-                  <div className={`size-10 rounded-full ${step.color} flex items-center justify-center`}>
-                    <Icon className="size-5 text-white" />
+              <Fragment key={step.label}>
+                <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border ${step.borderColor} ${step.bg} p-6`}>
+                  <div className={`size-14 rounded-full ${step.color} flex items-center justify-center`}>
+                    <Icon className="size-7 text-white" />
                   </div>
-                  <span className={`text-xs font-semibold ${step.textColor} text-center`}>{step.label}</span>
+                  <span className={`text-sm font-semibold ${step.textColor} text-center`}>{step.label}</span>
                 </div>
                 {i < steps.length - 1 && (
-                  <ArrowRight className="size-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center">
+                    <ArrowRight className="size-6 text-muted-foreground flex-shrink-0" />
+                  </div>
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </div>
 
-        <div className="mt-4 space-y-1.5 text-sm text-muted-foreground w-full max-w-xl">
+        <div className="mt-6 space-y-2 text-base text-muted-foreground w-full max-w-2xl">
           <div className="flex gap-2">
             <span className="font-medium text-foreground">1.</span>
-            <span>Upload a CSV of patient outcomes — one row per patient.</span>
+            <span>Upload a CSV of patient outcomes or use a sample dataset.</span>
           </div>
           <div className="flex gap-2">
             <span className="font-medium text-foreground">2.</span>
@@ -91,12 +101,16 @@ export default function WelcomePage({ open, onClose, onStartUpload }: WelcomePag
 
       {/* Footer */}
       <div className="px-8 flex gap-3 pb-16 justify-center">
-        <Button className="flex-1 max-w-xs" onClick={onStartUpload}>
+        <Button onClick={onStartUpload}>
           Start with a sample upload
           <ArrowRight className="size-4 ml-2" />
         </Button>
-        <Button variant="outline" onClick={onClose}>
-          Dismiss
+        <Button onClick={onGoToUpload}>
+          Upload your own patient data
+          <ArrowRight className="size-4 ml-2" />
+        </Button>
+        <Button style={{ backgroundColor: '#E9A23B' }} onClick={onGoToDashboard}>
+          Go to Dashboard
         </Button>
       </div>
     </div>
