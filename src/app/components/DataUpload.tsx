@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Upload, FileText, CheckCircle, AlertCircle, Download, Loader2 } from 'lucide-react';
 import WorkflowView from './WorkflowView';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLocation } from 'react-router';
 import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
@@ -16,8 +17,12 @@ interface DataUploadProps {
 
 export default function DataUpload({ triggerSampleUpload, onSampleConsumed }: DataUploadProps) {
   const { patients, dataSource, thresholds, isLoading, setUploadedPatients, clearUploadedData } = useData();
+  const location = useLocation();
+  const navTab = (location.state as { initialTab?: string } | null)?.initialTab;
 
-  const [uploadPanelOpen, setUploadPanelOpen] = useState(() => dataSource === 'uploaded');
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(
+    () => navTab === 'upload' || dataSource === 'uploaded',
+  );
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
