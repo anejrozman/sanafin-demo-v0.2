@@ -5,14 +5,19 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Upload, FileText, CheckCircle, AlertCircle, Download, Loader2 } from 'lucide-react';
 import WorkflowView from './WorkflowView';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
 
 export default function DataUpload() {
-  const { patients, dataSource, thresholds, isLoading, setUploadedPatients, clearUploadedData } = useData();
+  const {
+    patients, dataSource, thresholds, isLoading,
+    processed, setProcessed,
+    setUploadedPatients, clearUploadedData,
+  } = useData();
   const location = useLocation();
+  const navigate = useNavigate();
   const navTab = (location.state as { initialTab?: string } | null)?.initialTab;
 
   const [uploadPanelOpen, setUploadPanelOpen] = useState(
@@ -21,9 +26,14 @@ export default function DataUpload() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [processed, setProcessed] = useState(false);
-  const [processedFilename, setProcessedFilename] = useState('');
+  // Derive a display filename for the WorkflowView header when restoring from localStorage.
+  const [processedFilename, setProcessedFilename] = useState<string>(() => {
+    if (processed && dataSource === 'uploaded') return 'uploaded cohort';
+    if (processed && dataSource === 'sample') return 'sanafin-patient-template.csv';
+    return '';
+  });
   const [parseError, setParseError] = useState<string | null>(null);
+  const [animationDone, setAnimationDone] = useState(false);
 
   function handleSampleUpload() {
     if (dataSource === 'uploaded') {
@@ -34,7 +44,7 @@ export default function DataUpload() {
     setProcessing(true);
     setTimeout(() => {
       setProcessing(false);
-      setProcessed(true);
+      setProcessed(true);  // marks pipeline as run in the store
     }, 600);
   }
 
@@ -66,7 +76,7 @@ export default function DataUpload() {
       setProcessedFilename(uploadedFile.name);
       setTimeout(() => {
         setProcessing(false);
-        setProcessed(true);
+        setProcessed(true);  // marks pipeline as run in the store
       }, 600);
     } catch {
       setParseError('Failed to parse CSV file. Please check the format and try again.');
@@ -75,12 +85,12 @@ export default function DataUpload() {
   }
 
   function handleClearAndReset() {
-    clearUploadedData();
-    setProcessed(false);
+    clearUploadedData();  // resets processed in the store
     setProcessedFilename('');
     setUploadedFile(null);
     setParseError(null);
     setUploadPanelOpen(false);
+    setAnimationDone(false);
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -315,7 +325,22 @@ export default function DataUpload() {
                   filename={processedFilename}
                   patients={patients}
                   thresholds={thresholds}
+                  onComplete={() => setAnimationDone(true)}
                 />
+                <AnimatePresence>
+                  {animationDone && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex justify-center mt-8"
+                    >
+                      <Button onClick={() => navigate('/')}>
+                        View Dashboard
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </CardContent>
             </Card>
           </motion.div>

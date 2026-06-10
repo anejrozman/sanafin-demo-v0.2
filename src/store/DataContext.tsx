@@ -12,9 +12,11 @@ interface DataState {
   dataSource: 'sample' | 'uploaded';
   thresholds: Thresholds;
   isLoading: boolean;
+  processed: boolean;
   setUploadedPatients: (patients: PatientRecord[]) => void;
   clearUploadedData: () => void;
   setThresholds: (t: Thresholds) => void;
+  setProcessed: (v: boolean) => void;
 }
 
 const DataContext = createContext<DataState | null>(null);
@@ -31,6 +33,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   });
   const [isLoading, setIsLoading] = useState(true);
+  // True only when uploaded data is already persisted — sample data requires an explicit
+  // pipeline run each session.
+  const [processed, setProcessedState] = useState(() => {
+    return (
+      localStorage.getItem(LS_DATA_SOURCE) === 'uploaded' &&
+      localStorage.getItem(LS_PATIENTS) !== null
+    );
+  });
   const sampleCacheRef = useRef<PatientRecord[] | null>(null);
 
   useEffect(() => {
@@ -60,6 +70,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const setProcessed = (v: boolean) => setProcessedState(v);
+
   const setUploadedPatients = (newPatients: PatientRecord[]) => {
     setPatients(newPatients);
     setDataSource('uploaded');
@@ -70,6 +82,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const clearUploadedData = () => {
     localStorage.removeItem(LS_PATIENTS);
     localStorage.removeItem(LS_DATA_SOURCE);
+    setProcessedState(false);
 
     if (sampleCacheRef.current) {
       setPatients(sampleCacheRef.current);
@@ -95,7 +108,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider
-      value={{ patients, dataSource, thresholds, isLoading, setUploadedPatients, clearUploadedData, setThresholds }}
+      value={{
+        patients, dataSource, thresholds, isLoading, processed,
+        setUploadedPatients, clearUploadedData, setThresholds, setProcessed,
+      }}
     >
       {children}
     </DataContext.Provider>

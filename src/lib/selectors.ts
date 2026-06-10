@@ -187,3 +187,33 @@ export function getRulePerformance(
     return { ruleId: rule.id, label: rule.label, passedCount, failedCount, passRate };
   });
 }
+
+// ─── Enrollment span ─────────────────────────────────────────────────────────
+
+export type EnrollmentSpan = {
+  earliestEnrollment: string;  // ISO date of first enrolled patient
+  latestMeasurement: string;   // ISO date of most recent measurement
+  avgProgramDays: number;      // avg days between enrollment and last measurement
+};
+
+export function getEnrollmentSpan(patients: PatientRecord[]): EnrollmentSpan | null {
+  if (patients.length === 0) return null;
+
+  let earliestEnrollment = patients[0].enrollment_date;
+  let latestMeasurement = patients[0].last_measurement_date;
+  let totalDays = 0;
+
+  for (const p of patients) {
+    if (p.enrollment_date < earliestEnrollment) earliestEnrollment = p.enrollment_date;
+    if (p.last_measurement_date > latestMeasurement) latestMeasurement = p.last_measurement_date;
+    const enroll = new Date(p.enrollment_date).getTime();
+    const meas = new Date(p.last_measurement_date).getTime();
+    totalDays += (meas - enroll) / (1000 * 60 * 60 * 24);
+  }
+
+  return {
+    earliestEnrollment,
+    latestMeasurement,
+    avgProgramDays: Math.round(totalDays / patients.length),
+  };
+}

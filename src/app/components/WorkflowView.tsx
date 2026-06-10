@@ -20,6 +20,7 @@ interface WorkflowViewProps {
   filename: string;
   patients: PatientRecord[];
   thresholds: Thresholds;
+  onComplete?: () => void;
 }
 
 // ─── Connector SVG ─────────────────────────────────────────────────────────────
@@ -368,7 +369,7 @@ function ReportingDrawer({
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function WorkflowView({ filename, patients, thresholds }: WorkflowViewProps) {
+export default function WorkflowView({ filename, patients, thresholds, onComplete }: WorkflowViewProps) {
   const [nodeStatuses, setNodeStatuses] = useState<Record<NodeId, NodeStatus>>({
     injection: 'pending',
     verification: 'pending',
@@ -396,7 +397,10 @@ export default function WorkflowView({ filename, patients, thresholds }: Workflo
       setConnectorAnimated(s => ({ ...s, c2: true }));
     }, 3300);
     const t7 = setTimeout(() => setNodeStatuses(s => ({ ...s, reporting: 'running' })), 3500);
-    const t8 = setTimeout(() => setNodeStatuses(s => ({ ...s, reporting: 'done' })), 4800);
+    const t8 = setTimeout(() => {
+      setNodeStatuses(s => ({ ...s, reporting: 'done' }));
+      onComplete?.();
+    }, 4800);
     return () => [t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
   }, []);
 
