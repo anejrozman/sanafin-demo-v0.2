@@ -13,6 +13,7 @@
 export type PatientRecord = {
   patient_id: string;             // anonymized unique ID
   enrollment_date: string;        // ISO date (YYYY-MM-DD), program start date
+  end_date: string;               // ISO date (YYYY-MM-DD), program end date (1 year after enrollment)
   last_measurement_date: string;  // ISO date (YYYY-MM-DD), date of latest clinical readings
   baseline_hba1c: number;         // HbA1c % at enrollment
   latest_hba1c: number;           // most recent HbA1c %
@@ -20,6 +21,7 @@ export type PatientRecord = {
   baseline_weight_kg: number;     // weight (kg) at enrollment
   latest_weight_kg: number;       // most recent weight (kg)
   sessions_attended: number;      // program sessions completed (absolute count)
+  total_sessions: number;         // total sessions in the program
 };
 
 type ColumnSpec = {
@@ -32,6 +34,7 @@ type ColumnSpec = {
 export const PATIENT_CSV_COLUMNS: ColumnSpec[] = [
   { name: 'patient_id',            type: 'string', required: true },
   { name: 'enrollment_date',       type: 'string', required: true },
+  { name: 'end_date',              type: 'string', required: true },
   { name: 'last_measurement_date', type: 'string', required: true },
   { name: 'baseline_hba1c',        type: 'number', required: true },
   { name: 'latest_hba1c',          type: 'number', required: true },
@@ -39,4 +42,5 @@ export const PATIENT_CSV_COLUMNS: ColumnSpec[] = [
   { name: 'baseline_weight_kg',    type: 'number', required: true },
   { name: 'latest_weight_kg',      type: 'number', required: true },
   { name: 'sessions_attended',     type: 'number', required: true },
+  { name: 'total_sessions',        type: 'number', required: true },
 ];
