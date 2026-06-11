@@ -108,16 +108,17 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
 
           {/* Footer */}
           <div className="px-8 flex gap-3 pb-16 justify-center">
-            <Button onClick={onStartUpload}>
+            <Button size="lg" onClick={onStartUpload}>
               Start with a sample upload
               <ArrowRight className="size-4 ml-2" />
             </Button>
-            <Button onClick={onGoToUpload}>
+            <Button size="lg" onClick={onGoToUpload}>
               Upload your own patient data
               <ArrowRight className="size-4 ml-2" />
             </Button>
-            <Button className="bg-brand-amber hover:bg-brand-amber/90 text-white" onClick={onGoToDashboard}>
+            <Button size="lg" onClick={onGoToDashboard}>
               Go to Dashboard
+              <ArrowRight className="size-4 ml-2" />
             </Button>
           </div>
         </motion.div>
