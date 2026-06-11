@@ -10,6 +10,7 @@ import { Button } from './ui/button';
 import { useData } from '../../store/DataContext';
 import {
   getCohortSummary, getRulePerformance, getEnrollmentSpan,
+  getPatientStatusBreakdown, getAttentionPatients,
 } from '../../lib/selectors';
 
 function fmtDate(iso: string) {
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const summary = useMemo(() => getCohortSummary(patients, thresholds), [patients, thresholds]);
   const rulePerf = useMemo(() => getRulePerformance(patients, thresholds), [patients, thresholds]);
   const span = useMemo(() => getEnrollmentSpan(patients), [patients]);
+  const statusBreakdown = useMemo(() => getPatientStatusBreakdown(patients, thresholds), [patients, thresholds]);
+  const attentionPatients = useMemo(() => getAttentionPatients(patients, thresholds, 5), [patients, thresholds]);
 
   if (isLoading) {
     return (
@@ -43,14 +46,35 @@ export default function Dashboard() {
   if (!processed) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+        <div className="flex flex-col items-center gap-6 text-center max-w-sm">
           <Database className="size-12 text-muted-foreground" />
-          <div>
+          <div className="space-y-1">
             <p className="font-semibold">No cohort processed yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Go to Data Upload, select a dataset, and run the pipeline to see results here.
+            <p className="text-sm text-muted-foreground">
+              Complete these two steps to see outcome results here.
             </p>
           </div>
+          <div className="w-full text-left space-y-3">
+            <div className="flex gap-3">
+              <span className="size-5 rounded-full bg-brand-teal text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <div>
+                <p className="text-sm font-medium">Upload data or use the sample dataset</p>
+                <p className="text-xs text-muted-foreground">Select a patient cohort on the Data Upload page.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="size-5 rounded-full bg-brand-teal text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <div>
+                <p className="text-sm font-medium">Run the pipeline</p>
+                <p className="text-xs text-muted-foreground">Click "Start with sample data" or "Process Upload" to verify outcomes.</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Outcome targets are pre-configured.{' '}
+            <Link to="/targets" className="underline underline-offset-2">Outcome Targets</Link>
+            {' '}lets you customise them at any time.
+          </p>
           <Button asChild>
             <Link to="/upload">Go to Data Upload</Link>
           </Button>
@@ -264,6 +288,93 @@ export default function Dashboard() {
                 </p>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Patient status + Needs attention */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Patient status breakdown */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient Status</CardTitle>
+            <CardDescription>
+              How many of the {enabledRules.length} enabled goal{enabledRules.length !== 1 ? 's' : ''} each patient currently meets — independent of pass policy
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {[
+              { label: `Meeting all ${enabledRules.length} goal${enabledRules.length !== 1 ? 's' : ''}`, count: statusBreakdown.meetingAll, color: 'bg-brand-teal', dot: 'bg-brand-teal' },
+              { label: 'Partially meeting goals', count: statusBreakdown.partial, color: 'bg-brand-amber', dot: 'bg-brand-amber' },
+              { label: 'Not meeting any goals', count: statusBreakdown.meetingNone, color: 'bg-muted-foreground/30', dot: 'bg-muted-foreground/40' },
+            ].map(row => {
+              const pct = statusBreakdown.total > 0 ? (row.count / statusBreakdown.total) * 100 : 0;
+              return (
+                <div key={row.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`size-2.5 rounded-full ${row.dot} flex-shrink-0`} />
+                      <span className="text-sm">{row.label}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold">{row.count}</span>
+                      <span className="text-xs text-muted-foreground ml-1.5">{pct.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full ${row.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Needs attention */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Needs Attention</CardTitle>
+            <CardDescription>
+              {attentionPatients.length > 0
+                ? `${attentionPatients.length} patient${attentionPatients.length !== 1 ? 's' : ''} meeting the fewest goals — sorted worst first`
+                : 'All patients are meeting every enabled goal'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {attentionPatients.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground">
+                <p className="text-sm">No patients flagged.</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {attentionPatients.map((p, i) => (
+                  <div
+                    key={p.patientId}
+                    className={`flex items-start justify-between py-2.5 ${i < attentionPatients.length - 1 ? 'border-b' : ''}`}
+                  >
+                    <div className="min-w-0">
+                      <span className="font-mono text-sm font-medium">{p.patientId}</span>
+                      {p.unmetTargetLabels.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {p.unmetTargetLabels.map(label => (
+                            <span
+                              key={label}
+                              className="text-xs rounded-full border border-brand-amber text-brand-amber px-2 py-0.5"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm ml-4 shrink-0 tabular-nums">
+                      <span className="font-medium">{p.rulesMet}</span>
+                      <span className="text-muted-foreground"> / {p.rulesTotal}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

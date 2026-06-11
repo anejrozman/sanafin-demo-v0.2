@@ -4,13 +4,14 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
 } from './components/ui/sidebar';
 import { Button } from './components/ui/button';
-import { Home, FileText, Users, Target, Upload, HelpCircle } from 'lucide-react';
+import { Home, FileText, Users, Target, Upload, HelpCircle, SlidersHorizontal } from 'lucide-react';
 import sanafinLogo from '../assets/sanafin_logo.png';
 import Dashboard from './components/Dashboard';
 import OutcomeReports from './components/OutcomeReports';
 import CohortAnalysis from './components/CohortAnalysis';
 import ContractPerformance from './components/ContractPerformance';
 import DataUpload from './components/DataUpload';
+import OutcomeTargets from './components/OutcomeTargets';
 import WelcomePage, { useWelcomeModal } from './components/WelcomeModal';
 
 /* MARKER-MAKE-KIT-INVOKED */
@@ -26,6 +27,7 @@ const navGroups = [
     label: 'Run',
     items: [
       { name: 'Data Upload', href: '/upload', icon: Upload, anchor: true },
+      { name: 'Outcome Targets', href: '/targets', icon: SlidersHorizontal },
     ],
   },
   {
@@ -123,6 +125,7 @@ function AppShell() {
               <Route path="/cohort" element={<CohortAnalysis />} />
               <Route path="/contract" element={<ContractPerformance />} />
               <Route path="/upload" element={<DataUpload />} />
+              <Route path="/targets" element={<OutcomeTargets />} />
             </Routes>
           </main>
         </div>
