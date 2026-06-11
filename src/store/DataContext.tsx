@@ -13,10 +13,12 @@ interface DataState {
   thresholds: Thresholds;
   isLoading: boolean;
   processed: boolean;
+  animationSeen: boolean;
   setUploadedPatients: (patients: PatientRecord[]) => void;
   clearUploadedData: () => void;
   setThresholds: (t: Thresholds) => void;
   setProcessed: (v: boolean) => void;
+  setAnimationSeen: (v: boolean) => void;
 }
 
 const DataContext = createContext<DataState | null>(null);
@@ -36,6 +38,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // True only when uploaded data is already persisted — sample data requires an explicit
   // pipeline run each session.
   const [processed, setProcessedState] = useState(() => {
+    return (
+      localStorage.getItem(LS_DATA_SOURCE) === 'uploaded' &&
+      localStorage.getItem(LS_PATIENTS) !== null
+    );
+  });
+  // True once the pipeline animation has been seen; survives in-session navigation but
+  // resets on clear. Uploaded data restored from localStorage starts as true (already seen).
+  const [animationSeen, setAnimationSeenState] = useState(() => {
     return (
       localStorage.getItem(LS_DATA_SOURCE) === 'uploaded' &&
       localStorage.getItem(LS_PATIENTS) !== null
@@ -71,6 +81,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setProcessed = (v: boolean) => setProcessedState(v);
+  const setAnimationSeen = (v: boolean) => setAnimationSeenState(v);
 
   const setUploadedPatients = (newPatients: PatientRecord[]) => {
     setPatients(newPatients);
@@ -83,6 +94,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LS_PATIENTS);
     localStorage.removeItem(LS_DATA_SOURCE);
     setProcessedState(false);
+    setAnimationSeenState(false);
 
     if (sampleCacheRef.current) {
       setPatients(sampleCacheRef.current);
@@ -109,8 +121,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <DataContext.Provider
       value={{
-        patients, dataSource, thresholds, isLoading, processed,
-        setUploadedPatients, clearUploadedData, setThresholds, setProcessed,
+        patients, dataSource, thresholds, isLoading, processed, animationSeen,
+        setUploadedPatients, clearUploadedData, setThresholds, setProcessed, setAnimationSeen,
       }}
     >
       {children}

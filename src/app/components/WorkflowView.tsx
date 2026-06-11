@@ -21,6 +21,7 @@ interface WorkflowViewProps {
   patients: PatientRecord[];
   thresholds: Thresholds;
   onComplete?: () => void;
+  initiallyComplete?: boolean;
 }
 
 // ─── Connector SVG ─────────────────────────────────────────────────────────────
@@ -369,13 +370,15 @@ function ReportingDrawer({
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function WorkflowView({ filename, patients, thresholds, onComplete }: WorkflowViewProps) {
-  const [nodeStatuses, setNodeStatuses] = useState<Record<NodeId, NodeStatus>>({
-    injection: 'pending',
-    verification: 'pending',
-    reporting: 'pending',
-  });
-  const [connectorActive, setConnectorActive] = useState({ c1: false, c2: false });
+export default function WorkflowView({ filename, patients, thresholds, onComplete, initiallyComplete = false }: WorkflowViewProps) {
+  const [nodeStatuses, setNodeStatuses] = useState<Record<NodeId, NodeStatus>>(() =>
+    initiallyComplete
+      ? { injection: 'done', verification: 'done', reporting: 'done' }
+      : { injection: 'pending', verification: 'pending', reporting: 'pending' },
+  );
+  const [connectorActive, setConnectorActive] = useState(() =>
+    initiallyComplete ? { c1: true, c2: true } : { c1: false, c2: false },
+  );
   const [connectorAnimated, setConnectorAnimated] = useState({ c1: false, c2: false });
   const [drawerOpen, setDrawerOpen] = useState<NodeId | null>(null);
 
@@ -384,6 +387,10 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
   const enabledRules = thresholds.rules.filter(r => r.enabled);
 
   useEffect(() => {
+    if (initiallyComplete) {
+      onComplete?.();
+      return;
+    }
     const t1 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'running' })), 100);
     const t2 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'done' })), 1400);
     const t3 = setTimeout(() => {

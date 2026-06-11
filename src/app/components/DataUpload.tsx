@@ -14,6 +14,7 @@ export default function DataUpload() {
   const {
     patients, dataSource, thresholds, isLoading,
     processed, setProcessed,
+    animationSeen, setAnimationSeen,
     setUploadedPatients, clearUploadedData,
   } = useData();
   const location = useLocation();
@@ -33,7 +34,8 @@ export default function DataUpload() {
     return '';
   });
   const [parseError, setParseError] = useState<string | null>(null);
-  const [animationDone, setAnimationDone] = useState(false);
+  // Mirrors animationSeen from the store so the View Dashboard button persists across navigation.
+  const [animationDone, setAnimationDone] = useState(() => animationSeen);
 
   function handleSampleUpload() {
     if (dataSource === 'uploaded') {
@@ -85,7 +87,7 @@ export default function DataUpload() {
   }
 
   function handleClearAndReset() {
-    clearUploadedData();  // resets processed in the store
+    clearUploadedData();  // resets processed + animationSeen in the store
     setProcessedFilename('');
     setUploadedFile(null);
     setParseError(null);
@@ -325,7 +327,11 @@ export default function DataUpload() {
                   filename={processedFilename}
                   patients={patients}
                   thresholds={thresholds}
-                  onComplete={() => setAnimationDone(true)}
+                  initiallyComplete={animationSeen}
+                  onComplete={() => {
+                    setAnimationDone(true);
+                    setAnimationSeen(true);
+                  }}
                 />
                 <AnimatePresence>
                   {animationDone && (
