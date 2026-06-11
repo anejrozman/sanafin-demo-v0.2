@@ -3,14 +3,15 @@ import { Link } from 'react-router';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { Users, Target, Activity, TrendingDown, Database, Loader2 } from 'lucide-react';
+import { Database, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { useData } from '../../store/DataContext';
 import {
   getCohortSummary, getRulePerformance, getEnrollmentSpan,
-  getPatientStatusBreakdown, getAttentionPatients,
+  getAsOfDate, partitionByStatus, getAvgSessionCompletion,
+  classifyCohort, getByCategory, getFlaggedSorted,
 } from '../../lib/selectors';
 
 function fmtDate(iso: string) {
@@ -23,14 +24,94 @@ function fmt(v: number | null, decimals = 1): string {
   return v != null ? v.toFixed(decimals) : '—';
 }
 
+function SectionHeader({ title, count, accent }: { title: string; count: number; accent: string }) {
+  return (
+    <div className={`flex items-center gap-3 pb-2 border-b-2 ${accent}`}>
+      <h2 className="text-base font-semibold">{title}</h2>
+      <span className="text-sm text-muted-foreground tabular-nums">({count})</span>
+    </div>
+  );
+}
+
+function StatTiles({
+  count,
+  rateLabel,
+  rateValue,
+  hba1c,
+  cgm,
+  weight,
+  sessions,
+}: {
+  count: number;
+  rateLabel: string;
+  rateValue: number;
+  hba1c: number | null;
+  cgm: number | null;
+  weight: number | null;
+  sessions: number | null;
+}) {
+  const tiles = [
+    { label: 'Patients', value: count.toString() },
+    { label: rateLabel, value: `${rateValue.toFixed(1)}%` },
+    { label: 'Avg HbA1c Δ', value: hba1c != null ? `${fmt(hba1c)} pp` : '—' },
+    { label: 'Avg CGM TiR', value: cgm != null ? `${fmt(cgm)}%` : '—' },
+    { label: 'Avg Weight Loss', value: weight != null ? `${fmt(weight)}%` : '—' },
+    { label: 'Avg Sessions', value: sessions != null ? `${sessions.toFixed(0)}%` : '—' },
+  ];
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      {tiles.map(t => (
+        <div key={t.label} className="rounded-lg bg-muted/50 p-3">
+          <p className="text-xs text-muted-foreground">{t.label}</p>
+          <p className="text-lg font-bold mt-0.5">{t.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MetricChips({ ruleResults }: {
+  ruleResults: { ruleId: string; label: string; actual: number | null; unit: string; passed: boolean }[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {ruleResults.map(r => {
+        const val = r.actual != null
+          ? `${Number.isInteger(r.actual) ? r.actual : r.actual.toFixed(1)} ${r.unit}`
+          : '—';
+        return (
+          <span
+            key={r.ruleId}
+            className={`text-xs rounded-full px-2 py-0.5 border font-medium ${
+              r.passed
+                ? 'border-brand-teal text-brand-teal bg-brand-teal/8'
+                : 'border-brand-amber text-brand-amber bg-brand-amber/8'
+            }`}
+          >
+            {r.label}: {val}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { patients, thresholds, dataSource, isLoading, processed } = useData();
 
-  const summary = useMemo(() => getCohortSummary(patients, thresholds), [patients, thresholds]);
-  const rulePerf = useMemo(() => getRulePerformance(patients, thresholds), [patients, thresholds]);
-  const span = useMemo(() => getEnrollmentSpan(patients), [patients]);
-  const statusBreakdown = useMemo(() => getPatientStatusBreakdown(patients, thresholds), [patients, thresholds]);
-  const attentionPatients = useMemo(() => getAttentionPatients(patients, thresholds, 5), [patients, thresholds]);
+  const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
+  const { completed, active } = useMemo(() => partitionByStatus(patients, asOf), [patients, asOf]);
+
+  const summary      = useMemo(() => getCohortSummary(completed, thresholds), [completed, thresholds]);
+  const activeSummary = useMemo(() => getCohortSummary(active, thresholds), [active, thresholds]);
+  const rulePerf     = useMemo(() => getRulePerformance(completed, thresholds), [completed, thresholds]);
+  const span         = useMemo(() => getEnrollmentSpan(patients), [patients]);
+  const avgCompletedSessions = useMemo(() => getAvgSessionCompletion(completed), [completed]);
+  const avgActiveSessions    = useMemo(() => getAvgSessionCompletion(active), [active]);
+
+  const classified   = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
+  const cats         = useMemo(() => getByCategory(classified), [classified]);
+  const flaggedSorted = useMemo(() => getFlaggedSorted(classified), [classified]);
 
   if (isLoading) {
     return (
@@ -84,51 +165,19 @@ export default function Dashboard() {
   }
 
   const enabledRules = thresholds.rules.filter(r => r.enabled);
-
-  const kpis: { label: string; value: string; sub: string; icon: React.ElementType }[] = [
-    {
-      label: 'Total Patients',
-      value: summary.total.toString(),
-      sub: span ? `avg ${span.avgProgramDays}-day program` : 'in cohort',
-      icon: Users,
-    },
-    {
-      label: 'Outcomes Verified',
-      value: `${summary.passRate.toFixed(1)}%`,
-      sub: `${summary.passed} of ${summary.total} passed`,
-      icon: Target,
-    },
-    {
-      label: 'Avg HbA1c Reduction',
-      value: summary.avgHba1cChange != null ? `${fmt(summary.avgHba1cChange)} pp` : '—',
-      sub: `target ≥ 0.5 pp`,
-      icon: Activity,
-    },
-    {
-      label: 'Avg CGM Time-in-Range',
-      value: summary.avgCgmTimeInRange != null ? `${fmt(summary.avgCgmTimeInRange)}%` : '—',
-      sub: 'target ≥ 70%',
-      icon: Activity,
-    },
-    {
-      label: 'Avg Weight Loss',
-      value: summary.avgWeightLossPct != null ? `${fmt(summary.avgWeightLossPct)}%` : '—',
-      sub: 'target ≥ 5%',
-      icon: TrendingDown,
-    },
-  ];
-
   const failRate = 100 - summary.passRate;
+  const onTrackRate = active.length > 0 ? (cats.onTrack.length / active.length) * 100 : 0;
+  const flaggedRate = 100 - onTrackRate;
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1>Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             {span
-              ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · avg ${span.avgProgramDays}-day program`
+              ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · ${patients.length} patients · ${completed.length} completed · ${active.length} active`
               : 'Cohort outcome verification summary'}
           </p>
         </div>
@@ -140,243 +189,269 @@ export default function Dashboard() {
         </Badge>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        {kpis.map(kpi => {
-          const Icon = kpi.icon;
-          return (
-            <Card key={kpi.label}>
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground leading-tight pr-2">
-                    {kpi.label}
-                  </span>
-                  <Icon className="size-3.5 text-muted-foreground flex-shrink-0" />
-                </div>
-                <div className="text-2xl font-bold">{kpi.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>
+      {/* ── COMPLETED TREATMENT ─────────────────────────────────────────────── */}
+      <div className="space-y-5">
+        <SectionHeader title="Completed treatment" count={completed.length} accent="border-brand-teal" />
+
+        {completed.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No patients have completed treatment yet.</p>
+        ) : (
+          <>
+            <StatTiles
+              count={completed.length}
+              rateLabel="Pass rate"
+              rateValue={summary.passRate}
+              hba1c={summary.avgHba1cChange}
+              cgm={summary.avgCgmTimeInRange}
+              weight={summary.avgWeightLossPct}
+              sessions={avgCompletedSessions}
+            />
+
+            {/* Outcome breakdown + target pass-rate chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Target Pass Rates</CardTitle>
+                  <CardDescription>
+                    Share of completed patients meeting each threshold
+                    {rulePerf.length > 0 && (
+                      <span className="ml-1">
+                        — bottleneck:{' '}
+                        <span className="font-medium text-foreground">
+                          {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label}
+                        </span>
+                      </span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[180px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={rulePerf}
+                        layout="vertical"
+                        margin={{ left: 8, right: 40, top: 4, bottom: 4 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.08)" />
+                        <XAxis
+                          type="number"
+                          domain={[0, 100]}
+                          tickFormatter={v => `${v}%`}
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="label"
+                          width={150}
+                          tick={{ fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          formatter={(v) => [`${(v as number).toFixed(1)}%`, 'Pass rate']}
+                          cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                        />
+                        <Bar dataKey="passRate" radius={[0, 4, 4, 0]} maxBarSize={32}>
+                          {rulePerf.map(entry => (
+                            <Cell key={entry.ruleId} fill={entry.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Teal = ≥ 70% pass rate · Amber = below 70%
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Outcome Breakdown</CardTitle>
+                  <CardDescription>
+                    Pass vs fail · {enabledRules.length} rule{enabledRules.length !== 1 ? 's' : ''} · completed patients
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="h-3 rounded-full overflow-hidden flex">
+                    <div className="bg-brand-teal transition-all duration-500" style={{ width: `${summary.passRate}%` }} />
+                    <div className="bg-brand-amber flex-1" />
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Pass', count: summary.passed, rate: summary.passRate, color: 'bg-brand-teal' },
+                      { label: 'Fail', count: summary.failed, rate: failRate, color: 'bg-brand-amber' },
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`size-2.5 rounded-full ${row.color} flex-shrink-0`} />
+                          <span className="text-sm">{row.label}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-lg">{row.count}</span>
+                          <span className="text-xs text-muted-foreground ml-1.5">{row.rate.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-3">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Pass policy:</span>{' '}
+                      {thresholds.passPolicy === 'all'
+                        ? `all ${enabledRules.length} rules`
+                        : thresholds.passPolicy === 'any'
+                        ? 'any 1 rule'
+                        : `≥ ${thresholds.minRulesToPass ?? 1} rules`}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Needs review: failed completed patients */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Needs Review</CardTitle>
+                <CardDescription>
+                  {cats.fail.length > 0
+                    ? `${cats.fail.length} completed patient${cats.fail.length !== 1 ? 's' : ''} that did not meet outcome targets`
+                    : 'All completed patients met their outcome targets'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {cats.fail.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No patients to review.</p>
+                ) : (
+                  <div className="overflow-auto max-h-[280px]">
+                    <div className="space-y-0">
+                      {cats.fail.map((c, i) => (
+                        <div
+                          key={c.patient.patient_id}
+                          className={`flex items-start justify-between py-2.5 ${i < cats.fail.length - 1 ? 'border-b' : ''}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-mono text-sm font-medium">{c.patient.patient_id}</span>
+                            <MetricChips ruleResults={c.evaluation.ruleResults} />
+                          </div>
+                          <Badge className="bg-brand-amber text-white text-xs ml-4 shrink-0">Fail</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          );
-        })}
+          </>
+        )}
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Per-target pass rates — takes up 2 columns */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Target Pass Rates</CardTitle>
-            <CardDescription>
-              Share of patients meeting each contract threshold
-              {rulePerf.length > 0 && (
-                <span className="ml-1">
-                  — bottleneck:{' '}
-                  <span className="font-medium text-foreground">
-                    {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label}
-                  </span>
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={rulePerf}
-                  layout="vertical"
-                  margin={{ left: 8, right: 40, top: 4, bottom: 4 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.08)" />
-                  <XAxis
-                    type="number"
-                    domain={[0, 100]}
-                    tickFormatter={v => `${v}%`}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={150}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    formatter={(v) => [`${(v as number).toFixed(1)}%`, 'Pass rate']}
-                    cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                  />
-                  <Bar dataKey="passRate" radius={[0, 4, 4, 0]} maxBarSize={32}>
-                    {rulePerf.map(entry => (
-                      <Cell
-                        key={entry.ruleId}
-                        fill={entry.passRate >= 70 ? '#55B4A6' : '#E9A23B'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Teal = ≥ 70% pass rate · Amber = below 70%
-            </p>
-          </CardContent>
-        </Card>
+      {/* ── ACTIVE (IN TREATMENT) ────────────────────────────────────────────── */}
+      <div className="space-y-5">
+        <SectionHeader title="Active (in treatment)" count={active.length} accent="border-border" />
 
-        {/* Outcome breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Outcome Breakdown</CardTitle>
-            <CardDescription>
-              Passed vs failed across all {enabledRules.length} enabled rule{enabledRules.length !== 1 ? 's' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Stacked ratio bar */}
-            <div className="h-3 rounded-full overflow-hidden flex">
-              <div
-                className="bg-brand-teal transition-all duration-500"
-                style={{ width: `${summary.passRate}%` }}
-              />
-              <div className="bg-brand-amber flex-1" />
-            </div>
+        {active.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No patients currently in treatment.</p>
+        ) : (
+          <>
+            <StatTiles
+              count={active.length}
+              rateLabel="On-track rate"
+              rateValue={onTrackRate}
+              hba1c={activeSummary.avgHba1cChange}
+              cgm={activeSummary.avgCgmTimeInRange}
+              weight={activeSummary.avgWeightLossPct}
+              sessions={avgActiveSessions}
+            />
 
-            {/* Counts */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="size-2.5 rounded-full bg-brand-teal flex-shrink-0" />
-                  <span className="text-sm">Passed</span>
+            {/* On-track vs flagged breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Status Breakdown</CardTitle>
+                <CardDescription>
+                  Active patients currently meeting vs not yet meeting targets — mid-program snapshot
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-3 rounded-full overflow-hidden flex">
+                  <div className="border border-brand-teal/50 bg-brand-teal/20 transition-all duration-500 rounded-l-full" style={{ width: `${onTrackRate}%` }} />
+                  <div className="border border-brand-amber/50 bg-brand-amber/20 flex-1 rounded-r-full" />
                 </div>
-                <div className="text-right">
-                  <span className="font-bold text-lg">{summary.passed}</span>
-                  <span className="text-xs text-muted-foreground ml-1.5">
-                    {summary.passRate.toFixed(1)}%
-                  </span>
+                <div className="space-y-3">
+                  {[
+                    { label: 'On track', count: cats.onTrack.length, rate: onTrackRate, dotColor: 'border-brand-teal bg-brand-teal/20', textColor: 'text-brand-teal' },
+                    { label: 'Flagged', count: cats.flagged.length, rate: flaggedRate, dotColor: 'border-brand-amber bg-brand-amber/20', textColor: 'text-brand-amber' },
+                  ].map(row => (
+                    <div key={row.label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`size-2.5 rounded-full border ${row.dotColor} flex-shrink-0`} />
+                        <span className="text-sm">{row.label}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-lg">{row.count}</span>
+                        <span className="text-xs text-muted-foreground ml-1.5">{row.rate.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="size-2.5 rounded-full bg-brand-amber flex-shrink-0" />
-                  <span className="text-sm">Failed</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-lg">{summary.failed}</span>
-                  <span className="text-xs text-muted-foreground ml-1.5">
-                    {failRate.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Pass policy */}
-            <div className="border-t pt-3 space-y-1">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Pass policy:</span>{' '}
-                {thresholds.passPolicy === 'all'
-                  ? `all ${enabledRules.length} rules`
-                  : thresholds.passPolicy === 'any'
-                  ? 'any 1 rule'
-                  : `≥ ${thresholds.minRulesToPass ?? 1} rules`}
-              </p>
-              {span && (
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Cohort window:</span>{' '}
-                  {fmtDate(span.earliestEnrollment)} – {fmtDate(span.latestMeasurement)}
+                <p className="text-xs text-muted-foreground border-t pt-3">
+                  "On track" = currently meeting all enabled targets. Not a projection.
                 </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
 
-      {/* Patient status + Needs attention */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Patient status breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Patient Status</CardTitle>
-            <CardDescription>
-              How many of the {enabledRules.length} enabled goal{enabledRules.length !== 1 ? 's' : ''} each patient currently meets — independent of pass policy
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { label: `Meeting all ${enabledRules.length} goal${enabledRules.length !== 1 ? 's' : ''}`, count: statusBreakdown.meetingAll, color: 'bg-brand-teal', dot: 'bg-brand-teal' },
-              { label: 'Partially meeting goals', count: statusBreakdown.partial, color: 'bg-brand-amber', dot: 'bg-brand-amber' },
-              { label: 'Not meeting any goals', count: statusBreakdown.meetingNone, color: 'bg-muted-foreground/30', dot: 'bg-muted-foreground/40' },
-            ].map(row => {
-              const pct = statusBreakdown.total > 0 ? (row.count / statusBreakdown.total) * 100 : 0;
-              return (
-                <div key={row.label}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className={`size-2.5 rounded-full ${row.dot} flex-shrink-0`} />
-                      <span className="text-sm">{row.label}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold">{row.count}</span>
-                      <span className="text-xs text-muted-foreground ml-1.5">{pct.toFixed(0)}%</span>
+            {/* Flagged active patients — sorted nearest completion first */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Flagged Patients</CardTitle>
+                <CardDescription>
+                  {flaggedSorted.length > 0
+                    ? `${flaggedSorted.length} active patient${flaggedSorted.length !== 1 ? 's' : ''} not yet meeting targets — sorted by days remaining (nearest first)`
+                    : 'All active patients are currently meeting their targets'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {flaggedSorted.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No flagged patients.</p>
+                ) : (
+                  <div className="overflow-auto max-h-[360px]">
+                    <div className="space-y-0">
+                      {flaggedSorted.map((c, i) => {
+                        const sessionPct = c.patient.total_sessions > 0
+                          ? Math.round((c.patient.sessions_attended / c.patient.total_sessions) * 100)
+                          : null;
+                        return (
+                          <div
+                            key={c.patient.patient_id}
+                            className={`py-3 ${i < flaggedSorted.length - 1 ? 'border-b' : ''}`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0 flex-1">
+                                <span className="font-mono text-sm font-medium">{c.patient.patient_id}</span>
+                                <MetricChips ruleResults={c.evaluation.ruleResults} />
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0 text-right">
+                                {sessionPct != null && (
+                                  <span className="text-xs text-muted-foreground tabular-nums">
+                                    {sessionPct}% sessions
+                                  </span>
+                                )}
+                                <span className="text-sm font-medium tabular-nums">
+                                  {c.daysRemaining != null ? `${c.daysRemaining}d` : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full ${row.color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Needs attention */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Needs Attention</CardTitle>
-            <CardDescription>
-              {attentionPatients.length > 0
-                ? `${attentionPatients.length} patient${attentionPatients.length !== 1 ? 's' : ''} meeting the fewest goals — sorted worst first`
-                : 'All patients are meeting every enabled goal'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {attentionPatients.length === 0 ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <p className="text-sm">No patients flagged.</p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {attentionPatients.map((p, i) => (
-                  <div
-                    key={p.patientId}
-                    className={`flex items-start justify-between py-2.5 ${i < attentionPatients.length - 1 ? 'border-b' : ''}`}
-                  >
-                    <div className="min-w-0">
-                      <span className="font-mono text-sm font-medium">{p.patientId}</span>
-                      {p.unmetTargetLabels.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {p.unmetTargetLabels.map(label => (
-                            <span
-                              key={label}
-                              className="text-xs rounded-full border border-brand-amber text-brand-amber px-2 py-0.5"
-                            >
-                              {label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-sm ml-4 shrink-0 tabular-nums">
-                      <span className="font-medium">{p.rulesMet}</span>
-                      <span className="text-muted-foreground"> / {p.rulesTotal}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

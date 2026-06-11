@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
+import { getAsOfDate, getStatusCounts } from '../../lib/selectors';
 
 export default function DataUpload() {
   const {
@@ -36,6 +37,9 @@ export default function DataUpload() {
   const [parseError, setParseError] = useState<string | null>(null);
   // Mirrors animationSeen from the store so the View Dashboard button persists across navigation.
   const [animationDone, setAnimationDone] = useState(() => animationSeen);
+
+  const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
+  const statusCounts = useMemo(() => getStatusCounts(patients, asOf), [patients, asOf]);
 
   // React Router doesn't remount when navigating to the same route, so the useState
   // initializer won't re-run. This effect re-applies the tab intent on every navigation.
@@ -129,6 +133,12 @@ export default function DataUpload() {
   const sampleTabActive = !uploadPanelOpen && dataSource !== 'uploaded';
   const uploadTabActive = uploadPanelOpen || dataSource === 'uploaded';
 
+  function fmtAsOf(iso: string) {
+    const [y, m, d] = iso.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
+  }
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex items-start justify-between">
@@ -213,6 +223,11 @@ export default function DataUpload() {
                           <p className="text-muted-foreground mt-1">
                             {patients.length} patients · sanafin-patient-template.csv
                           </p>
+                          {asOf && (
+                            <p className="text-muted-foreground mt-0.5 text-xs">
+                              {statusCounts.completed} completed · {statusCounts.active} active (as of {fmtAsOf(asOf)})
+                            </p>
+                          )}
                           {dataSource === 'uploaded' && (
                             <p className="text-amber-600 mt-1 text-xs">
                               Currently using uploaded data. Switch to sample to clear it.
@@ -328,6 +343,11 @@ export default function DataUpload() {
                   <span className="font-mono text-xs bg-muted rounded px-1.5 py-0.5">{processedFilename}</span>
                   {' '}— watching pipeline run
                 </CardDescription>
+                {asOf && (
+                  <p className="text-xs text-muted-foreground">
+                    {statusCounts.total} patients · {statusCounts.completed} completed · {statusCounts.active} active (as of {fmtAsOf(asOf)})
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <WorkflowView

@@ -246,6 +246,143 @@ export function getAttentionPatients(
     .slice(0, limit);
 }
 
+// ─── Program status helpers ───────────────────────────────────────────────────
+
+export type ProgramStatus = 'completed' | 'active';
+
+/** The latest last_measurement_date across the cohort — used as the "as of" reference. */
+export function getAsOfDate(patients: PatientRecord[]): string | null {
+  if (patients.length === 0) return null;
+  return patients.reduce(
+    (max, p) => (p.last_measurement_date > max ? p.last_measurement_date : max),
+    patients[0].last_measurement_date,
+  );
+}
+
+/** A patient whose program end_date has passed the asOf date is "completed"; otherwise "active". */
+export function getProgramStatus(patient: PatientRecord, asOf: string): ProgramStatus {
+  return patient.end_date <= asOf ? 'completed' : 'active';
+}
+
+export function getStatusCounts(
+  patients: PatientRecord[],
+  asOf: string,
+): { completed: number; active: number; total: number } {
+  let completed = 0, active = 0;
+  for (const p of patients) {
+    if (getProgramStatus(p, asOf) === 'completed') completed++;
+    else active++;
+  }
+  return { completed, active, total: patients.length };
+}
+
+export function partitionByStatus(
+  patients: PatientRecord[],
+  asOf: string,
+): { completed: PatientRecord[]; active: PatientRecord[] } {
+  const completed: PatientRecord[] = [];
+  const active: PatientRecord[] = [];
+  for (const p of patients) {
+    if (getProgramStatus(p, asOf) === 'completed') completed.push(p);
+    else active.push(p);
+  }
+  return { completed, active };
+}
+
+/** Mean of sessions_attended / total_sessions × 100 across the subset; guards against /0. */
+export function getAvgSessionCompletion(patients: PatientRecord[]): number | null {
+  const valid = patients.filter(p => p.total_sessions > 0);
+  if (valid.length === 0) return null;
+  const sum = valid.reduce((s, p) => s + (p.sessions_attended / p.total_sessions) * 100, 0);
+  return sum / valid.length;
+}
+
+// ─── 2×2 patient classification ───────────────────────────────────────────────
+
+export type PatientCategory = 'pass' | 'fail' | 'on_track' | 'flagged';
+
+export interface ClassifiedPatient {
+  patient: PatientRecord;
+  category: PatientCategory;
+  evaluation: PatientEvaluation;
+  daysRemaining: number | null;       // days from asOf to end_date for active; null if completed
+  unmetTargetLabels: string[];
+  targetGaps: { label: string; gap: number; unit: string }[];
+}
+
+export function classifyPatient(
+  patient: PatientRecord,
+  thresholds: Thresholds,
+  asOf: string,
+): PatientCategory {
+  const evaluation = evaluatePatient(patient, thresholds);
+  const status = getProgramStatus(patient, asOf);
+  if (status === 'completed') return evaluation.passed ? 'pass' : 'fail';
+  return evaluation.passed ? 'on_track' : 'flagged';
+}
+
+export function classifyCohort(
+  patients: PatientRecord[],
+  thresholds: Thresholds,
+  asOf: string,
+): ClassifiedPatient[] {
+  return patients.map(patient => {
+    const status = getProgramStatus(patient, asOf);
+    const evaluation = evaluatePatient(patient, thresholds);
+    const category: PatientCategory =
+      status === 'completed'
+        ? evaluation.passed ? 'pass' : 'fail'
+        : evaluation.passed ? 'on_track' : 'flagged';
+
+    const daysRemaining =
+      status === 'active'
+        ? Math.max(0, Math.round(
+            (new Date(patient.end_date).getTime() - new Date(asOf + 'T00:00:00').getTime()) /
+            (1000 * 60 * 60 * 24),
+          ))
+        : null;
+
+    const unmetTargetLabels = evaluation.ruleResults
+      .filter(r => !r.passed)
+      .map(r => r.label);
+
+    const targetGaps = evaluation.ruleResults
+      .filter(r => !r.passed && r.actual !== null)
+      .map(r => ({
+        label: r.label,
+        gap: Math.abs(r.target - (r.actual as number)),
+        unit: r.unit,
+      }));
+
+    return { patient, category, evaluation, daysRemaining, unmetTargetLabels, targetGaps };
+  });
+}
+
+export function getByCategory(classified: ClassifiedPatient[]): {
+  pass: ClassifiedPatient[];
+  fail: ClassifiedPatient[];
+  onTrack: ClassifiedPatient[];
+  flagged: ClassifiedPatient[];
+} {
+  return {
+    pass: classified.filter(c => c.category === 'pass'),
+    fail: classified.filter(c => c.category === 'fail'),
+    onTrack: classified.filter(c => c.category === 'on_track'),
+    flagged: classified.filter(c => c.category === 'flagged'),
+  };
+}
+
+/** Flagged active patients sorted by daysRemaining ASC (nearest end first). */
+export function getFlaggedSorted(classified: ClassifiedPatient[]): ClassifiedPatient[] {
+  return classified
+    .filter(c => c.category === 'flagged')
+    .sort((a, b) => {
+      if (a.daysRemaining === null) return 1;
+      if (b.daysRemaining === null) return -1;
+      return a.daysRemaining - b.daysRemaining;
+    });
+}
+
 // ─── Enrollment span ─────────────────────────────────────────────────────────
 
 export type EnrollmentSpan = {

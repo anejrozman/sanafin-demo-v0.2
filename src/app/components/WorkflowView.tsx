@@ -7,10 +7,12 @@ import { Database, ShieldCheck, FileText, CheckCircle, ChevronRight, Loader2 } f
 import { type PatientRecord, PATIENT_CSV_COLUMNS } from '../../lib/schema';
 import { type Thresholds } from '../../lib/thresholds';
 import {
-  evaluateCohort,
-  getCohortSummary,
-  type PatientEvaluation,
-  type CohortSummary,
+  getAsOfDate,
+  classifyCohort,
+  getByCategory,
+  getFlaggedSorted,
+  type ClassifiedPatient,
+  type PatientCategory,
 } from '../../lib/selectors';
 
 type NodeStatus = 'pending' | 'running' | 'done';
@@ -127,6 +129,17 @@ function WorkflowNode({
   );
 }
 
+// ─── Category badge ─────────────────────────────────────────────────────────────
+function CategoryBadge({ category }: { category: PatientCategory }) {
+  if (category === 'pass')
+    return <Badge className="bg-brand-teal text-white text-xs">Pass</Badge>;
+  if (category === 'fail')
+    return <Badge className="bg-brand-amber text-white text-xs">Fail</Badge>;
+  if (category === 'on_track')
+    return <Badge variant="outline" className="border-brand-teal text-brand-teal text-xs">On track</Badge>;
+  return <Badge variant="outline" className="border-brand-amber text-brand-amber text-xs">Flagged</Badge>;
+}
+
 // ─── Drawer panels ─────────────────────────────────────────────────────────────
 function InjectionDrawer({ filename, patients }: { filename: string; patients: PatientRecord[] }) {
   return (
@@ -186,15 +199,13 @@ function InjectionDrawer({ filename, patients }: { filename: string; patients: P
 }
 
 function VerificationDrawer({
-  evaluations,
+  classified,
   thresholds,
 }: {
-  evaluations: PatientEvaluation[];
+  classified: ClassifiedPatient[];
   thresholds: Thresholds;
 }) {
   const enabledRules = thresholds.rules.filter(r => r.enabled);
-  const passed = evaluations.filter(e => e.passed).length;
-  const failed = evaluations.length - passed;
   const policyLabel =
     thresholds.passPolicy === 'all'
       ? `All ${enabledRules.length} rules must pass`
@@ -202,8 +213,14 @@ function VerificationDrawer({
       ? 'At least 1 rule must pass'
       : `At least ${thresholds.minRulesToPass ?? 1} rules must pass`;
 
+  const passCount   = classified.filter(c => c.category === 'pass').length;
+  const failCount   = classified.filter(c => c.category === 'fail').length;
+  const onTrackCount = classified.filter(c => c.category === 'on_track').length;
+  const flaggedCount = classified.filter(c => c.category === 'flagged').length;
+
   return (
     <div className="space-y-4">
+      {/* Contract rules */}
       <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm">
         <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-2">Contract rules</p>
         <div className="space-y-1.5">
@@ -216,74 +233,82 @@ function VerificationDrawer({
         </div>
       </div>
 
-      <div className="flex gap-3">
-        <div className="flex-1 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-center">
-          <p className="text-2xl font-bold text-emerald-700">{passed}</p>
-          <p className="text-xs text-emerald-600 mt-0.5">Passed</p>
+      {/* 4-category summary */}
+      <div className="grid grid-cols-4 gap-2">
+        <div className="rounded-lg p-3 text-center bg-brand-teal/10 border border-brand-teal/30">
+          <p className="text-2xl font-bold text-brand-teal">{passCount}</p>
+          <p className="text-xs font-medium text-brand-teal mt-0.5">Pass</p>
+          <p className="text-xs text-muted-foreground">completed</p>
         </div>
-        <div className="flex-1 rounded-lg bg-amber-50 border border-amber-200 p-3 text-center">
-          <p className="text-2xl font-bold text-amber-700">{failed}</p>
-          <p className="text-xs text-amber-600 mt-0.5">Flagged</p>
+        <div className="rounded-lg p-3 text-center bg-brand-amber/10 border border-brand-amber/30">
+          <p className="text-2xl font-bold text-brand-amber">{failCount}</p>
+          <p className="text-xs font-medium text-brand-amber mt-0.5">Fail</p>
+          <p className="text-xs text-muted-foreground">completed</p>
+        </div>
+        <div className="rounded-lg p-3 text-center border border-brand-teal/40">
+          <p className="text-2xl font-bold text-brand-teal">{onTrackCount}</p>
+          <p className="text-xs font-medium text-brand-teal mt-0.5">On track</p>
+          <p className="text-xs text-muted-foreground">active</p>
+        </div>
+        <div className="rounded-lg p-3 text-center border border-brand-amber/40">
+          <p className="text-2xl font-bold text-brand-amber">{flaggedCount}</p>
+          <p className="text-xs font-medium text-brand-amber mt-0.5">Flagged</p>
+          <p className="text-xs text-muted-foreground">active</p>
         </div>
       </div>
 
+      {/* Per-patient list */}
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Per-patient results — {evaluations.length} rows
+          Per-patient results — {classified.length} rows
         </p>
         <div className="rounded-lg border overflow-hidden">
           <div className="overflow-auto max-h-[420px]">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted sticky top-0">
-                <TableHead className="text-xs">Patient</TableHead>
-                <TableHead className="text-xs">HbA1c Δ</TableHead>
-                <TableHead className="text-xs">CGM TIR</TableHead>
-                <TableHead className="text-xs">Wt loss</TableHead>
-                <TableHead className="text-xs">Verdict</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {evaluations.map(e => {
-                const hba1c = e.metrics.hba1c_change;
-                const cgm = e.metrics.cgm_time_in_range;
-                const wt = e.metrics.weight_loss_pct;
-                return (
-                  <TableRow key={e.patientId}>
-                    <TableCell className="font-mono text-xs">{e.patientId}</TableCell>
-                    <TableCell className="text-xs">
-                      {hba1c != null ? (
-                        <span className={hba1c >= 0.5 ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
-                          {hba1c >= 0 ? `−${hba1c.toFixed(1)}` : `+${Math.abs(hba1c).toFixed(1)}`} pp
-                        </span>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {cgm != null ? (
-                        <span className={cgm >= 70 ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
-                          {cgm}%
-                        </span>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {wt != null ? (
-                        <span className={wt >= 5 ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
-                          {wt.toFixed(1)}%
-                        </span>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {e.passed ? (
-                        <Badge className="bg-emerald-600 text-white text-xs">Pass</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-amber-400 text-amber-700 text-xs">Flagged</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted sticky top-0">
+                  <TableHead className="text-xs">Patient</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
+                  <TableHead className="text-xs">HbA1c Δ</TableHead>
+                  <TableHead className="text-xs">CGM TiR</TableHead>
+                  <TableHead className="text-xs">Wt loss</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {classified.map(c => {
+                  const hba1c = c.evaluation.metrics.hba1c_change;
+                  const cgm   = c.evaluation.metrics.cgm_time_in_range;
+                  const wt    = c.evaluation.metrics.weight_loss_pct;
+                  return (
+                    <TableRow key={c.patient.patient_id}>
+                      <TableCell className="font-mono text-xs">{c.patient.patient_id}</TableCell>
+                      <TableCell><CategoryBadge category={c.category} /></TableCell>
+                      <TableCell className="text-xs">
+                        {hba1c != null ? (
+                          <span className={hba1c >= 0.5 ? 'text-brand-teal font-medium' : 'text-brand-amber font-medium'}>
+                            {hba1c >= 0 ? `−${hba1c.toFixed(1)}` : `+${Math.abs(hba1c).toFixed(1)}`} pp
+                          </span>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {cgm != null ? (
+                          <span className={cgm >= 70 ? 'text-brand-teal font-medium' : 'text-brand-amber font-medium'}>
+                            {cgm}%
+                          </span>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {wt != null ? (
+                          <span className={wt >= 5 ? 'text-brand-teal font-medium' : 'text-brand-amber font-medium'}>
+                            {wt.toFixed(1)}%
+                          </span>
+                        ) : '—'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
@@ -291,75 +316,124 @@ function VerificationDrawer({
   );
 }
 
-function ReportingDrawer({
-  evaluations,
-  summary,
-}: {
-  evaluations: PatientEvaluation[];
-  summary: CohortSummary;
-}) {
-  const passedEvals = evaluations.filter(e => e.passed);
+function ReportingDrawer({ classified }: { classified: ClassifiedPatient[] }) {
+  const cats = getByCategory(classified);
+  const flaggedSorted = getFlaggedSorted(classified);
+
+  function MetricTable({
+    title,
+    titleColor,
+    rows,
+    showDaysRemaining,
+    showUnmet,
+    emptyMsg,
+  }: {
+    title: string;
+    titleColor: string;
+    rows: ClassifiedPatient[];
+    showDaysRemaining: boolean;
+    showUnmet: boolean;
+    emptyMsg: string;
+  }) {
+    return (
+      <div>
+        <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${titleColor}`}>
+          {title} — {rows.length} patient{rows.length !== 1 ? 's' : ''}
+        </p>
+        {rows.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2 pl-1">{emptyMsg}</p>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            <div className="overflow-auto max-h-[280px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted sticky top-0">
+                    <TableHead className="text-xs">Patient</TableHead>
+                    <TableHead className="text-xs">HbA1c Δ</TableHead>
+                    <TableHead className="text-xs">CGM TiR</TableHead>
+                    <TableHead className="text-xs">Wt loss</TableHead>
+                    {showDaysRemaining && <TableHead className="text-xs">Days left</TableHead>}
+                    {showUnmet && <TableHead className="text-xs">Unmet targets</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map(c => {
+                    const hba1c = c.evaluation.metrics.hba1c_change;
+                    const cgm   = c.evaluation.metrics.cgm_time_in_range;
+                    const wt    = c.evaluation.metrics.weight_loss_pct;
+                    return (
+                      <TableRow key={c.patient.patient_id}>
+                        <TableCell className="font-mono text-xs">{c.patient.patient_id}</TableCell>
+                        <TableCell className="text-xs">
+                          {hba1c != null ? `${hba1c >= 0 ? '−' : '+'}${Math.abs(hba1c).toFixed(1)} pp` : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs">{cgm != null ? `${cgm}%` : '—'}</TableCell>
+                        <TableCell className="text-xs">{wt != null ? `${wt.toFixed(1)}%` : '—'}</TableCell>
+                        {showDaysRemaining && (
+                          <TableCell className="text-xs tabular-nums">{c.daysRemaining ?? '—'}</TableCell>
+                        )}
+                        {showUnmet && (
+                          <TableCell className="text-xs">
+                            <div className="flex flex-wrap gap-1">
+                              {(c.targetGaps.length > 0 ? c.targetGaps : c.unmetTargetLabels.map(l => ({ label: l, gap: null, unit: '' }))).map((g) => (
+                                <span
+                                  key={g.label}
+                                  className="text-xs border border-brand-amber text-brand-amber rounded-full px-1.5 py-0 whitespace-nowrap"
+                                >
+                                  {'gap' in g && g.gap !== null
+                                    ? `${g.label} Δ${(g.gap as number).toFixed(1)}${g.unit}`
+                                    : g.label}
+                                </span>
+                              ))}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-emerald-700 font-semibold uppercase tracking-wide">Verified outcomes</p>
-            <p className="text-3xl font-bold text-emerald-800 mt-1">{summary.passed}</p>
-            <p className="text-sm text-emerald-700 mt-1">patients with verified outcomes</p>
-          </div>
-          <Badge className="bg-emerald-600 text-white">Evidence ready</Badge>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-emerald-700">
-          <span>Pass rate: <strong>{summary.passRate.toFixed(1)}%</strong></span>
-          <span>Total cohort: <strong>{summary.total}</strong></span>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Verified patients — {passedEvals.length} rows
-        </p>
-        <div className="rounded-lg border overflow-hidden">
-          <div className="overflow-auto max-h-[420px]">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted sticky top-0">
-                <TableHead className="text-xs">Patient</TableHead>
-                <TableHead className="text-xs">HbA1c Δ</TableHead>
-                <TableHead className="text-xs">CGM TIR</TableHead>
-                <TableHead className="text-xs">Wt loss</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {passedEvals.map(e => (
-                <TableRow key={e.patientId}>
-                  <TableCell className="font-mono text-xs">{e.patientId}</TableCell>
-                  <TableCell className="text-xs text-emerald-600 font-medium">
-                    {e.metrics.hba1c_change != null
-                      ? `−${e.metrics.hba1c_change.toFixed(1)} pp`
-                      : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-emerald-600 font-medium">
-                    {e.metrics.cgm_time_in_range != null ? `${e.metrics.cgm_time_in_range}%` : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-emerald-600 font-medium">
-                    {e.metrics.weight_loss_pct != null
-                      ? `${e.metrics.weight_loss_pct.toFixed(1)}%`
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="bg-emerald-600 text-white text-xs">Verified</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <MetricTable
+        title="Passed — completed treatment"
+        titleColor="text-brand-teal"
+        rows={cats.pass}
+        showDaysRemaining={false}
+        showUnmet={false}
+        emptyMsg="No patients completed treatment with passing outcomes."
+      />
+      <MetricTable
+        title="Failed — completed treatment"
+        titleColor="text-brand-amber"
+        rows={cats.fail}
+        showDaysRemaining={false}
+        showUnmet={true}
+        emptyMsg="No patients completed treatment without meeting targets."
+      />
+      <MetricTable
+        title="On track — in treatment, currently meeting targets"
+        titleColor="text-brand-teal"
+        rows={cats.onTrack}
+        showDaysRemaining={true}
+        showUnmet={false}
+        emptyMsg="No active patients currently meeting all targets."
+      />
+      <MetricTable
+        title="Flagged — in treatment, not yet meeting targets"
+        titleColor="text-brand-amber"
+        rows={flaggedSorted}
+        showDaysRemaining={true}
+        showUnmet={true}
+        emptyMsg="No active patients with unmet targets."
+      />
     </div>
   );
 }
@@ -377,8 +451,9 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
   const [connectorAnimated, setConnectorAnimated] = useState({ c1: false, c2: false });
   const [drawerOpen, setDrawerOpen] = useState<NodeId | null>(null);
 
-  const evaluations = useMemo(() => evaluateCohort(patients, thresholds), [patients, thresholds]);
-  const summary = useMemo(() => getCohortSummary(patients, thresholds), [patients, thresholds]);
+  const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
+  const classified = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
+  const cats = useMemo(() => getByCategory(classified), [classified]);
   const enabledRules = thresholds.rules.filter(r => r.enabled);
 
   useEffect(() => {
@@ -433,11 +508,12 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       summary: (
         <>
           <p>
-            <span className="text-emerald-600 font-semibold">{summary.passed} passed</span>
-            {' · '}
-            <span className="text-amber-600 font-semibold">{summary.failed} flagged</span>
+            <span className="text-brand-teal font-semibold">{cats.pass.length + cats.onTrack.length}</span>
+            {' meeting · '}
+            <span className="text-brand-amber font-semibold">{cats.fail.length + cats.flagged.length}</span>
+            {' not'}
           </p>
-          <p>{enabledRules.length} clinical rule{enabledRules.length !== 1 ? 's' : ''}</p>
+          <p>{enabledRules.length} rule{enabledRules.length !== 1 ? 's' : ''}</p>
         </>
       ),
     },
@@ -448,8 +524,16 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       color: { ring: 'border-emerald-200', bg: 'bg-emerald-50', icon: 'text-emerald-600', text: 'text-emerald-700' },
       summary: (
         <>
-          <p className="font-semibold text-emerald-700">{summary.passed} verified outcomes</p>
-          <p>Evidence ready</p>
+          <p>
+            <span className="text-brand-teal font-semibold">{cats.pass.length} pass</span>
+            {' · '}
+            <span className="text-brand-amber font-semibold">{cats.fail.length} fail</span>
+          </p>
+          <p>
+            <span className="text-brand-teal font-semibold">{cats.onTrack.length} on track</span>
+            {' · '}
+            <span className="text-brand-amber font-semibold">{cats.flagged.length} flagged</span>
+          </p>
         </>
       ),
     },
@@ -502,7 +586,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
             </SheetTitle>
             <SheetDescription>Clinical rule gates and per-patient verdicts</SheetDescription>
           </SheetHeader>
-          <VerificationDrawer evaluations={evaluations} thresholds={thresholds} />
+          <VerificationDrawer classified={classified} thresholds={thresholds} />
         </SheetContent>
       </Sheet>
 
@@ -513,9 +597,9 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
               <FileText className="size-5 text-emerald-600" />
               Reporting
             </SheetTitle>
-            <SheetDescription>Verified outcomes and evidence package</SheetDescription>
+            <SheetDescription>Outcome evidence across all four patient categories</SheetDescription>
           </SheetHeader>
-          <ReportingDrawer evaluations={evaluations} summary={summary} />
+          <ReportingDrawer classified={classified} />
         </SheetContent>
       </Sheet>
     </div>
