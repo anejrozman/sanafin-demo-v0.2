@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -36,6 +36,13 @@ export default function DataUpload() {
   const [parseError, setParseError] = useState<string | null>(null);
   // Mirrors animationSeen from the store so the View Dashboard button persists across navigation.
   const [animationDone, setAnimationDone] = useState(() => animationSeen);
+
+  // React Router doesn't remount when navigating to the same route, so the useState
+  // initializer won't re-run. This effect re-applies the tab intent on every navigation.
+  useEffect(() => {
+    if (navTab === 'upload') setUploadPanelOpen(true);
+    else if (navTab === 'sample') setUploadPanelOpen(false);
+  }, [navTab]);
 
   function handleSampleUpload() {
     if (dataSource === 'uploaded') {

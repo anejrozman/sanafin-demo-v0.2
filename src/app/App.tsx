@@ -99,7 +99,7 @@ function AppShell() {
 
   const handleStartUpload = () => {
     close();
-    navigate('/upload');
+    navigate('/upload', { state: { initialTab: 'sample' } });
   };
 
   const handleGoToUpload = () => {

@@ -58,7 +58,7 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
                 It automates verifying, and reporting results for payers and healthcare providers.
               </p>
               <p className="text-foreground leading-relaxed text-xl">
-                The demo focuses on outcome verification and reporting, demonstrating how trusted
+                The demo focuses on outcome verification and reporting for type 2 diabetes treatment, demonstrating how trusted
                 evidence becomes the foundation for outcome-based contracts.
               </p>
             </div>
@@ -93,7 +93,7 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
             <div className="mt-6 space-y-2 text-base text-muted-foreground w-full max-w-2xl">
               <div className="flex gap-2">
                 <span className="font-medium text-foreground">1.</span>
-                <span>Upload a CSV of patient outcomes or use a sample dataset.</span>
+                <span>Upload a CSV of patient data or use a sample dataset.</span>
               </div>
               <div className="flex gap-2">
                 <span className="font-medium text-foreground">2.</span>
@@ -101,7 +101,7 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
               </div>
               <div className="flex gap-2">
                 <span className="font-medium text-foreground">3.</span>
-                <span>Funds are released from escrow to your clinic account automatically.</span>
+                <span>A dashboard provides insights into the treatment performance of the cohort.</span>
               </div>
             </div>
           </div>
