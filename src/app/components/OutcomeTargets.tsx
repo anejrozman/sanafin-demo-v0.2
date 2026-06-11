@@ -26,15 +26,14 @@ export default function OutcomeTargets() {
       <div>
         <h1>Outcome Targets</h1>
         <p className="text-muted-foreground mt-1">
-          Define the clinical goals each participant should meet. Changes apply immediately to the processed cohort.
+          Define the clinical goals each participant should meet.
         </p>
       </div>
 
       <div className="flex items-start gap-2.5 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
         <Info className="size-4 mt-0.5 shrink-0 text-brand-teal" />
         <span>
-          Default targets are pre-configured — you can start without editing anything here.
-          Any changes update the Dashboard live once a cohort is processed.
+          Default targets are pre-configured.
         </span>
       </div>
 
@@ -44,7 +43,6 @@ export default function OutcomeTargets() {
           <h2 className="text-base font-semibold">Clinical Goals</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Each goal defines a measurable threshold for participant outcomes.
-            Metric keys are read-only — they map to fields in the uploaded patient data.
           </p>
         </div>
 
@@ -94,8 +92,6 @@ export default function OutcomeTargets() {
                   >
                     <option value=">=">≥</option>
                     <option value="<=">≤</option>
-                    <option value=">">{'>'}</option>
-                    <option value="<">{'<'}</option>
                   </select>
                   <input
                     type="number"

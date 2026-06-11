@@ -71,8 +71,6 @@ function applyOperator(
   switch (operator) {
     case '>=': return actual >= target;
     case '<=': return actual <= target;
-    case '>':  return actual >  target;
-    case '<':  return actual <  target;
   }
 }
 
