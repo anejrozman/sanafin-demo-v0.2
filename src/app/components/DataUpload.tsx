@@ -184,7 +184,7 @@ export default function DataUpload() {
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        Use sample data
+                        Use sample dataset
                       </button>
                       <button
                         onClick={() => setUploadPanelOpen(true)}
@@ -194,7 +194,7 @@ export default function DataUpload() {
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        Upload your own
+                        Upload your own dataset
                       </button>
                     </div>
 
