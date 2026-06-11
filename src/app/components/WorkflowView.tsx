@@ -129,7 +129,6 @@ function WorkflowNode({
 
 // ─── Drawer panels ─────────────────────────────────────────────────────────────
 function InjectionDrawer({ filename, patients }: { filename: string; patients: PatientRecord[] }) {
-  const displayRows = patients.slice(0, 10);
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -152,39 +151,34 @@ function InjectionDrawer({ filename, patients }: { filename: string; patients: P
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Detected columns</p>
-        <div className="flex flex-wrap gap-1.5">
-          {PATIENT_CSV_COLUMNS.map(col => (
-            <code key={col.name} className="text-xs bg-muted border border-border rounded px-1.5 py-0.5">{col.name}</code>
-          ))}
-        </div>
-      </div>
-
-      <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Patient records {patients.length > 10 ? `(first 10 of ${patients.length})` : ''}
+          Patient records — {patients.length} rows
         </p>
         <div className="rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted">
-                <TableHead className="text-xs">patient_id</TableHead>
-                <TableHead className="text-xs">HbA1c (base → latest)</TableHead>
-                <TableHead className="text-xs">CGM TIR</TableHead>
-                <TableHead className="text-xs">Enrolled</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayRows.map(p => (
-                <TableRow key={p.patient_id}>
-                  <TableCell className="font-mono text-xs">{p.patient_id}</TableCell>
-                  <TableCell className="text-xs">{p.baseline_hba1c} → {p.latest_hba1c}</TableCell>
-                  <TableCell className="text-xs">{p.cgm_time_in_range}%</TableCell>
-                  <TableCell className="text-xs">{p.enrollment_date}</TableCell>
+          <div className="overflow-auto max-h-[420px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted sticky top-0">
+                  {PATIENT_CSV_COLUMNS.map(col => (
+                    <TableHead key={col.name} className="text-xs font-mono whitespace-nowrap px-3">
+                      {col.name}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {patients.map(p => (
+                  <TableRow key={p.patient_id}>
+                    {PATIENT_CSV_COLUMNS.map(col => (
+                      <TableCell key={col.name} className="text-xs font-mono whitespace-nowrap px-3">
+                        {String(p[col.name])}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>
@@ -201,8 +195,6 @@ function VerificationDrawer({
   const enabledRules = thresholds.rules.filter(r => r.enabled);
   const passed = evaluations.filter(e => e.passed).length;
   const failed = evaluations.length - passed;
-  const displayRows = evaluations.slice(0, 20);
-
   const policyLabel =
     thresholds.passPolicy === 'all'
       ? `All ${enabledRules.length} rules must pass`
@@ -237,12 +229,13 @@ function VerificationDrawer({
 
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Per-patient results {evaluations.length > 20 ? `(first 20 of ${evaluations.length})` : ''}
+          Per-patient results — {evaluations.length} rows
         </p>
         <div className="rounded-lg border overflow-hidden">
+          <div className="overflow-auto max-h-[420px]">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted">
+              <TableRow className="bg-muted sticky top-0">
                 <TableHead className="text-xs">Patient</TableHead>
                 <TableHead className="text-xs">HbA1c Δ</TableHead>
                 <TableHead className="text-xs">CGM TIR</TableHead>
@@ -251,7 +244,7 @@ function VerificationDrawer({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayRows.map(e => {
+              {evaluations.map(e => {
                 const hba1c = e.metrics.hba1c_change;
                 const cgm = e.metrics.cgm_time_in_range;
                 const wt = e.metrics.weight_loss_pct;
@@ -291,6 +284,7 @@ function VerificationDrawer({
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
     </div>
@@ -305,7 +299,6 @@ function ReportingDrawer({
   summary: CohortSummary;
 }) {
   const passedEvals = evaluations.filter(e => e.passed);
-  const displayRows = passedEvals.slice(0, 20);
 
   return (
     <div className="space-y-4">
@@ -326,12 +319,13 @@ function ReportingDrawer({
 
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Verified patients {passedEvals.length > 20 ? `(first 20 of ${passedEvals.length})` : ''}
+          Verified patients — {passedEvals.length} rows
         </p>
         <div className="rounded-lg border overflow-hidden">
+          <div className="overflow-auto max-h-[420px]">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted">
+              <TableRow className="bg-muted sticky top-0">
                 <TableHead className="text-xs">Patient</TableHead>
                 <TableHead className="text-xs">HbA1c Δ</TableHead>
                 <TableHead className="text-xs">CGM TIR</TableHead>
@@ -340,7 +334,7 @@ function ReportingDrawer({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayRows.map(e => (
+              {passedEvals.map(e => (
                 <TableRow key={e.patientId}>
                   <TableCell className="font-mono text-xs">{e.patientId}</TableCell>
                   <TableCell className="text-xs text-emerald-600 font-medium">
@@ -363,6 +357,7 @@ function ReportingDrawer({
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
     </div>
@@ -486,7 +481,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       </div>
 
       <Sheet open={drawerOpen === 'injection'} onOpenChange={v => !v && setDrawerOpen(null)}>
-        <SheetContent className="w-[520px] sm:max-w-[520px] overflow-y-auto">
+        <SheetContent className="w-[780px] sm:max-w-[780px] overflow-y-auto px-8 py-6">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <Database className="size-5 text-blue-600" />
@@ -499,7 +494,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       </Sheet>
 
       <Sheet open={drawerOpen === 'verification'} onOpenChange={v => !v && setDrawerOpen(null)}>
-        <SheetContent className="w-[520px] sm:max-w-[520px] overflow-y-auto">
+        <SheetContent className="w-[780px] sm:max-w-[780px] overflow-y-auto px-8 py-6">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-violet-600" />
@@ -512,7 +507,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       </Sheet>
 
       <Sheet open={drawerOpen === 'reporting'} onOpenChange={v => !v && setDrawerOpen(null)}>
-        <SheetContent className="w-[520px] sm:max-w-[520px] overflow-y-auto">
+        <SheetContent className="w-[780px] sm:max-w-[780px] overflow-y-auto px-8 py-6">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <FileText className="size-5 text-emerald-600" />

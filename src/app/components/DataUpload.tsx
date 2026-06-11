@@ -135,7 +135,7 @@ export default function DataUpload() {
         <div>
           <h1>Data Upload</h1>
           <p className="text-muted-foreground mt-1">
-            Upload participant data — SanaFin verifies outcomes against your contract thresholds.
+            Upload participant data — SanaFin verifies outcomes against outcome targets.
           </p>
         </div>
         {processed && (
@@ -159,7 +159,7 @@ export default function DataUpload() {
               <AlertTitle>Data Privacy & Security</AlertTitle>
               <AlertDescription>
                 All patient data must be de-identified. Patient IDs should be pseudonymised.
-                Data is encrypted in transit and at rest (Swiss data residency).
+                Data is encrypted in transit and at rest.
               </AlertDescription>
             </Alert>
 
@@ -167,7 +167,7 @@ export default function DataUpload() {
               <CardHeader>
                 <CardTitle>Upload Participant Outcome Data</CardTitle>
                 <CardDescription>
-                  CSV with one row per patient — HbA1c, CGM time-in-range, and weight columns required
+                  CSV with one row per patient, download template for required format. You can use the sample dataset or upload your own.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
