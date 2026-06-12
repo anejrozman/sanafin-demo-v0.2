@@ -1,11 +1,54 @@
+import { useEffect, useRef, useState } from 'react';
 import { useData } from '../../store/DataContext';
 import { type OutcomeRule } from '../../lib/thresholds';
 import { Card, CardContent } from './ui/card';
 import { Checkbox } from './ui/checkbox';
-import { Info, Pencil } from 'lucide-react';
+import { Check, Info, Loader2, Pencil } from 'lucide-react';
+
+type SaveStatus = 'saved' | 'saving';
+
+function AutosaveIndicator({ status, justNow }: { status: SaveStatus; justNow: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+      {status === 'saving' ? (
+        <>
+          <Loader2 className="size-3 animate-spin" />
+          <span>Saving…</span>
+        </>
+      ) : (
+        <>
+          <Check className="size-3 text-brand-teal" />
+          <span>Autosaved{justNow ? ' · just now' : ''}</span>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function OutcomeTargets() {
   const { thresholds, setThresholds } = useData();
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [justNow, setJustNow] = useState(false);
+  const didMountRef = useRef(false);
+  const justNowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    setSaveStatus('saving');
+    setJustNow(false);
+    if (justNowTimerRef.current) clearTimeout(justNowTimerRef.current);
+
+    const saveTimer = setTimeout(() => {
+      setSaveStatus('saved');
+      setJustNow(true);
+      justNowTimerRef.current = setTimeout(() => setJustNow(false), 10_000);
+    }, 800);
+
+    return () => clearTimeout(saveTimer);
+  }, [thresholds]);
 
   function updateRule(ruleId: string, patch: Partial<OutcomeRule>) {
     setThresholds({
@@ -16,11 +59,14 @@ export default function OutcomeTargets() {
 
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1>Outcome Targets</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Define the clinical goals each participant should meet.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1>Outcome Targets</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Define the clinical goals each participant should meet.
+          </p>
+        </div>
+        <AutosaveIndicator status={saveStatus} justNow={justNow} />
       </div>
 
       <div className="flex items-start gap-2.5 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
