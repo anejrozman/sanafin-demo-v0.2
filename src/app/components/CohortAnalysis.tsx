@@ -33,7 +33,7 @@ export default function CohortAnalysis() {
     <div className="p-8 space-y-6">
       <div>
         <h1>Cohort Analysis</h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Patient segmentation by BMI category, delivery method, and app engagement
         </p>
       </div>

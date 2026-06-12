@@ -27,7 +27,7 @@ function fmt(v: number | null, decimals = 1): string {
 function SectionHeader({ title, count, accent }: { title: string; count: number; accent: string }) {
   return (
     <div className={`flex items-center gap-3 pb-2 border-b-2 ${accent}`}>
-      <h2 className="text-base font-semibold">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide">{title}</h2>
       <span className="text-sm text-muted-foreground tabular-nums">({count})</span>
     </div>
   );
@@ -175,7 +175,7 @@ export default function Dashboard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1>Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {span
               ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · ${patients.length} patients · ${completed.length} completed · ${active.length} active`
               : 'Cohort outcome verification summary'}

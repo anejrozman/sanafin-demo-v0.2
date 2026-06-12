@@ -144,7 +144,7 @@ export default function DataUpload() {
       <div className="flex items-start justify-between">
         <div>
           <h1>Data Upload</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Upload participant data — SanaFin verifies outcomes against outcome targets.
           </p>
         </div>

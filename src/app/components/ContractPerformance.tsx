@@ -26,7 +26,7 @@ export default function ContractPerformance() {
       <div className="flex items-center justify-between">
         <div>
           <h1>Contract Performance</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Contract-ready evidence and performance against agreed targets
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function ContractPerformance() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="font-semibold mb-2">Program Performance</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">Program Performance</h3>
             <p className="text-sm">
               The Oviva digital weight management program has successfully achieved all five contractual outcome targets,
               with an average performance of 117% against agreed benchmarks. All clinical effectiveness and engagement metrics
@@ -161,7 +161,7 @@ export default function ContractPerformance() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">Clinical Outcomes</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">Clinical Outcomes</h3>
             <p className="text-sm">
               Participants achieved an average weight loss of 6.8%, exceeding the contractual target of 5%
               by 36%. App engagement remained consistently high at 84%, with participants actively using the photo diary, chat feedback, and learning content.
@@ -170,7 +170,7 @@ export default function ContractPerformance() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">Economic Value</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">Economic Value</h3>
             <p className="text-sm">
               The program is estimated to have prevented approximately 38 obesity-related conditions (including type 2 diabetes and cardiovascular events),
               resulting in CHF 285,000 in avoided healthcare costs over a 5-year period.
@@ -179,7 +179,7 @@ export default function ContractPerformance() {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">Recommendation</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">Recommendation</h3>
             <p className="text-sm">
               <strong>Program renewal is strongly recommended.</strong> The evidence supports continued investment
               and potential expansion to additional high-risk populations. The provider has demonstrated consistent

@@ -18,7 +18,7 @@ export default function OutcomeTargets() {
     <div className="p-8 space-y-6">
       <div>
         <h1>Outcome Targets</h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Define the clinical goals each participant should meet.
         </p>
       </div>
@@ -33,7 +33,7 @@ export default function OutcomeTargets() {
       {/* Clinical goals */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold">Clinical Goals</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide">Clinical Goals</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Each goal defines a measurable threshold for participant outcomes.
           </p>
