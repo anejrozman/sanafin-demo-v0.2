@@ -219,7 +219,7 @@ export default function DataUpload() {
                     {!uploadPanelOpen && (
                       <div className="space-y-3">
                         <div className="rounded-lg border bg-muted/50 p-4 text-sm">
-                          <p className="font-medium text-foreground">Sample cohort loaded</p>
+                          <p className="text-sm font-medium text-foreground">Sample cohort loaded</p>
                           <p className="text-muted-foreground mt-1">
                             {patients.length} patients · sanafin-patient-template.csv
                           </p>

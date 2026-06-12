@@ -542,7 +542,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
   return (
     <div className="mt-8">
       <div className="mb-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Processing pipeline</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Processing pipeline</p>
         <p className="text-sm text-muted-foreground mt-0.5">Click any node to inspect details</p>
       </div>
 

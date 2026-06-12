@@ -130,7 +130,7 @@ export default function Dashboard() {
         <div className="flex flex-col items-center gap-6 text-center max-w-sm">
           <Database className="size-12 text-muted-foreground" />
           <div className="space-y-1">
-            <p className="font-semibold">No cohort processed yet</p>
+            <p className="text-sm font-semibold">No cohort processed yet</p>
             <p className="text-sm text-muted-foreground">
               Complete these two steps to see outcome results here.
             </p>

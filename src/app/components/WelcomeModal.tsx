@@ -66,7 +66,7 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
 
           {/* Three-step diagram */}
           <div className="px-8 py-10 flex flex-col items-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
               How it works
             </p>
             <div className="flex items-stretch gap-2 w-full max-w-2xl">
