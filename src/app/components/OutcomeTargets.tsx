@@ -1,7 +1,7 @@
 import { useData } from '../../store/DataContext';
 import { type OutcomeRule } from '../../lib/thresholds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Info } from 'lucide-react';
+import { Info, Pencil } from 'lucide-react';
 
 export default function OutcomeTargets() {
   const { thresholds, setThresholds } = useData();
@@ -69,14 +69,17 @@ export default function OutcomeTargets() {
 
                 {/* Label + metric key */}
                 <div className="flex flex-1 items-center gap-2 min-w-0">
-                  <input
-                    type="text"
-                    value={rule.label}
-                    onChange={e => updateRule(rule.id, { label: e.target.value })}
-                    disabled={!rule.enabled}
-                    aria-label="Goal name"
-                    className="min-w-[120px] flex-1 max-w-[220px] font-medium text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-brand-teal focus:outline-none transition-colors disabled:pointer-events-none"
-                  />
+                  <div className="flex items-center gap-1.5 min-w-[120px] flex-1 max-w-[220px]">
+                    <Pencil className="size-3 shrink-0 text-muted-foreground/60" />
+                    <input
+                      type="text"
+                      value={rule.label}
+                      onChange={e => updateRule(rule.id, { label: e.target.value })}
+                      disabled={!rule.enabled}
+                      aria-label="Goal name"
+                      className="flex-1 font-medium text-sm bg-transparent border-0 border-b border-border focus:border-brand-teal focus:outline-none transition-colors disabled:pointer-events-none"
+                    />
+                  </div>
                   <code className="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0">
                     {rule.metric}
                   </code>
@@ -90,7 +93,9 @@ export default function OutcomeTargets() {
                     disabled={!rule.enabled}
                     className="rounded-md border bg-background px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <option value=">">{'>'}</option>
                     <option value=">=">≥</option>
+                    <option value="<">{'<'}</option>
                     <option value="<=">≤</option>
                   </select>
                   <input
