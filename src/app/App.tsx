@@ -84,7 +84,7 @@ function AppSidebar() {
                       <SidebarMenuButton
                         asChild
                         isActive={isActive}
-                        className={`[&>svg]:size-4 group-data-[collapsible=icon]:size-8! ${isAnchor ? 'font-semibold' : ''}`}
+                        className="[&>svg]:size-4 group-data-[collapsible=icon]:size-8!"
                       >
                         <Link to={item.href} className="flex items-center gap-3">
                           <Icon className={isAnchor ? 'text-primary' : undefined} />
