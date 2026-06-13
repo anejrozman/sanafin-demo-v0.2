@@ -92,7 +92,7 @@ function AppSidebar() {
       </SidebarContent>
       {!isCollapsed && (
         <SidebarFooter className="px-5 py-4">
-          <p className="text-xs text-muted-foreground">Sanafin Demo Version 0.2</p>
+          <p className="text-xs text-muted-foreground">Sanafin Demo Version 0.2.1 - Unified Dashboard</p>
         </SidebarFooter>
       )}
     </Sidebar>
