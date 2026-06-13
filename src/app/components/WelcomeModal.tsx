@@ -30,7 +30,7 @@ const steps = [
   },
   {
     icon: Banknote,
-    label: 'Payout',
+    label: 'Reporting and Payout',
     color: 'bg-brand-teal',
     textColor: 'text-brand-teal',
     borderColor: 'border-brand-teal/30',
@@ -108,14 +108,6 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
 
           {/* Footer */}
           <div className="px-8 flex gap-3 pb-16 justify-center">
-            <Button size="lg" onClick={onStartUpload}>
-              Start with a sample upload
-              <ArrowRight className="size-4 ml-2" />
-            </Button>
-            <Button size="lg" onClick={onGoToUpload}>
-              Upload your own patient data
-              <ArrowRight className="size-4 ml-2" />
-            </Button>
             <Button size="lg" onClick={onGoToDashboard}>
               Go to Dashboard
               <ArrowRight className="size-4 ml-2" />
