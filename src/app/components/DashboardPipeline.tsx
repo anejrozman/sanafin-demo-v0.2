@@ -102,17 +102,17 @@ const STEPS = [
   {
     icon: Database,
     label: 'Data Injection',
-    color: { ring: 'border-blue-200', bg: 'bg-blue-50', icon: 'text-blue-600', text: 'text-blue-700' },
+    color: { ring: 'border-blue-200', bg: 'bg-blue-50/70', icon: 'text-blue-700', text: 'text-blue-700' },
   },
   {
     icon: ShieldCheck,
     label: 'Verification',
-    color: { ring: 'border-violet-200', bg: 'bg-violet-50', icon: 'text-violet-600', text: 'text-violet-700' },
+    color: { ring: 'border-violet-200', bg: 'bg-violet-50/70', icon: 'text-violet-700', text: 'text-violet-700' },
   },
   {
     icon: FileText,
     label: 'Reporting',
-    color: { ring: 'border-emerald-200', bg: 'bg-emerald-50', icon: 'text-emerald-600', text: 'text-emerald-700' },
+    color: { ring: 'border-emerald-200', bg: 'bg-emerald-50/70', icon: 'text-emerald-700', text: 'text-emerald-700' },
   },
 ];
 
