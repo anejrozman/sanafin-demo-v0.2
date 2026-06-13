@@ -183,3 +183,12 @@
     line-height: 1.5;
   }
 }
+
+@keyframes collapsible-down {
+  from { height: 0; overflow: hidden; }
+  to   { height: var(--radix-collapsible-content-height); overflow: hidden; }
+}
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height); overflow: hidden; }
+  to   { height: 0; overflow: hidden; }
+}
