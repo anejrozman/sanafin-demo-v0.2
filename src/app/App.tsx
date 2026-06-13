@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router';
+import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
@@ -7,15 +7,13 @@ import {
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
-import { Home, FileText, Users, Target, Upload, HelpCircle, SlidersHorizontal } from 'lucide-react';
+import { Home, FileText, Users, Target, HelpCircle } from 'lucide-react';
 import sanafinLogo from '../assets/sanafin_logo.png';
 import symbolIcon from '../assets/Symbol_no_bg.png';
 import Dashboard from './components/Dashboard';
 import OutcomeReports from './components/OutcomeReports';
 import CohortAnalysis from './components/CohortAnalysis';
 import ContractPerformance from './components/ContractPerformance';
-import DataUpload from './components/DataUpload';
-import OutcomeTargets from './components/OutcomeTargets';
 import WelcomePage, { useWelcomeModal } from './components/WelcomeModal';
 
 /* MARKER-MAKE-KIT-INVOKED */
@@ -25,13 +23,6 @@ const navGroups = [
     label: 'Overview',
     items: [
       { name: 'Dashboard', href: '/', icon: Home },
-    ],
-  },
-  {
-    label: 'Run',
-    items: [
-      { name: 'Data Upload', href: '/upload', icon: Upload, anchor: true },
-      { name: 'Outcome Targets', href: '/targets', icon: SlidersHorizontal },
     ],
   },
   {
@@ -142,21 +133,8 @@ function AppHeader({ onHowItWorks }: { onHowItWorks: () => void }) {
 
 function AppShell() {
   const { open, close, reopen } = useWelcomeModal();
-  const navigate = useNavigate();
-
-  const handleStartUpload = () => {
-    close();
-    navigate('/upload', { state: { initialTab: 'sample' } });
-  };
-
-  const handleGoToUpload = () => {
-    close();
-    navigate('/upload', { state: { initialTab: 'upload' } });
-  };
-
   const handleGoToDashboard = () => {
     close();
-    navigate('/');
   };
 
   return (
@@ -171,13 +149,11 @@ function AppShell() {
               <Route path="/reports" element={<OutcomeReports />} />
               <Route path="/cohort" element={<CohortAnalysis />} />
               <Route path="/contract" element={<ContractPerformance />} />
-              <Route path="/upload" element={<DataUpload />} />
-              <Route path="/targets" element={<OutcomeTargets />} />
             </Routes>
           </main>
         </div>
       </div>
-      <WelcomePage open={open} onStartUpload={handleStartUpload} onGoToUpload={handleGoToUpload} onGoToDashboard={handleGoToDashboard} />
+      <WelcomePage open={open} onGoToDashboard={handleGoToDashboard} />
     </SidebarProvider>
   );
 }
