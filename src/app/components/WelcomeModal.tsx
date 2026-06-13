@@ -1,13 +1,11 @@
 import { useState, Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
-import { ArrowRight, Database, ShieldCheck, Banknote } from 'lucide-react';
+import { ArrowRight, Database, ShieldCheck, FileText } from 'lucide-react';
 import sanafinLogo from '../../assets/sanafin_logo.png';
 
 interface WelcomePageProps {
   open: boolean;
-  onStartUpload: () => void;
-  onGoToUpload: () => void;
   onGoToDashboard: () => void;
 }
 
@@ -15,30 +13,30 @@ const steps = [
   {
     icon: Database,
     label: 'Data Injection',
-    color: 'bg-brand-teal',
-    textColor: 'text-brand-teal',
-    borderColor: 'border-brand-teal/30',
-    bg: 'bg-brand-teal/10',
+    color: 'bg-blue-50/70',
+    iconColor: 'text-blue-700',
+    textColor: 'text-blue-700',
+    borderColor: 'border-blue-200',
   },
   {
     icon: ShieldCheck,
     label: 'Verification',
-    color: 'bg-brand-amber',
-    textColor: 'text-brand-amber',
-    borderColor: 'border-brand-amber/30',
-    bg: 'bg-brand-amber/10',
+    color: 'bg-violet-50/70',
+    iconColor: 'text-violet-700',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200',
   },
   {
-    icon: Banknote,
-    label: 'Reporting and Payout',
-    color: 'bg-brand-teal',
-    textColor: 'text-brand-teal',
-    borderColor: 'border-brand-teal/30',
-    bg: 'bg-brand-teal/10',
+    icon: FileText,
+    label: 'Reporting',
+    color: 'bg-emerald-50/70',
+    iconColor: 'text-emerald-700',
+    textColor: 'text-emerald-700',
+    borderColor: 'border-emerald-200',
   },
 ];
 
-export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToDashboard }: WelcomePageProps) {
+export default function WelcomePage({ open, onGoToDashboard }: WelcomePageProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -74,9 +72,9 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
                 const Icon = step.icon;
                 return (
                   <Fragment key={step.label}>
-                    <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border ${step.borderColor} ${step.bg} p-6`}>
+                    <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border ${step.borderColor} ${step.color} p-6`}>
                       <div className={`size-14 rounded-full ${step.color} flex items-center justify-center`}>
-                        <Icon className="size-7 text-white" />
+                        <Icon className={`size-7 ${step.iconColor}`} />
                       </div>
                       <span className={`text-sm font-semibold ${step.textColor} text-center`}>{step.label}</span>
                     </div>
