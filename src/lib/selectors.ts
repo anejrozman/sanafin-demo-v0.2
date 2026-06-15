@@ -73,6 +73,7 @@ function applyOperator(
     case '<=': return actual <= target;
     case '>':  return actual > target;
     case '<':  return actual < target;
+    case '=':  return Math.abs(actual - target) < 0.0001;
   }
 }
 
@@ -188,65 +189,7 @@ export function getRulePerformance(
   });
 }
 
-// ─── Patient status breakdown ─────────────────────────────────────────────────
 
-export type PatientStatusBreakdown = {
-  meetingAll: number;
-  partial: number;
-  meetingNone: number;
-  total: number;
-};
-
-export function getPatientStatusBreakdown(
-  patients: PatientRecord[],
-  thresholds: Thresholds,
-): PatientStatusBreakdown {
-  const evaluations = evaluateCohort(patients, thresholds);
-  const enabledCount = thresholds.rules.filter(r => r.enabled).length;
-  let meetingAll = 0, partial = 0, meetingNone = 0;
-
-  for (const e of evaluations) {
-    const met = e.ruleResults.filter(r => r.passed).length;
-    if (enabledCount === 0 || met === enabledCount) {
-      meetingAll++;
-    } else if (met === 0) {
-      meetingNone++;
-    } else {
-      partial++;
-    }
-  }
-
-  return { meetingAll, partial, meetingNone, total: evaluations.length };
-}
-
-// ─── Attention patients ────────────────────────────────────────────────────────
-
-export type AttentionPatient = {
-  patientId: string;
-  rulesMet: number;
-  rulesTotal: number;
-  unmetTargetLabels: string[];
-};
-
-export function getAttentionPatients(
-  patients: PatientRecord[],
-  thresholds: Thresholds,
-  limit = 5,
-): AttentionPatient[] {
-  const enabledCount = thresholds.rules.filter(r => r.enabled).length;
-  if (enabledCount === 0) return [];
-
-  return evaluateCohort(patients, thresholds)
-    .map(e => ({
-      patientId: e.patientId,
-      rulesMet: e.ruleResults.filter(r => r.passed).length,
-      rulesTotal: enabledCount,
-      unmetTargetLabels: e.ruleResults.filter(r => !r.passed).map(r => r.label),
-    }))
-    .filter(a => a.rulesMet < a.rulesTotal)
-    .sort((a, b) => a.rulesMet - b.rulesMet)
-    .slice(0, limit);
-}
 
 // ─── Program status helpers ───────────────────────────────────────────────────
 
@@ -291,13 +234,7 @@ export function partitionByStatus(
   return { completed, active };
 }
 
-/** Mean of sessions_attended / total_sessions × 100 across the subset; guards against /0. */
-export function getAvgSessionCompletion(patients: PatientRecord[]): number | null {
-  const valid = patients.filter(p => p.total_sessions > 0);
-  if (valid.length === 0) return null;
-  const sum = valid.reduce((s, p) => s + (p.sessions_attended / p.total_sessions) * 100, 0);
-  return sum / valid.length;
-}
+
 
 // ─── 2×2 patient classification ───────────────────────────────────────────────
 

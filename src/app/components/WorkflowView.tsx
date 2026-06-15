@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Database, ShieldCheck, FileText, CheckCircle, ChevronRight, Loader2 } from 'lucide-react';
+import { Database, ShieldCheck, FileText, CheckCircle, ChevronRight } from 'lucide-react';
 import { type PatientRecord, PATIENT_CSV_COLUMNS } from '../../lib/schema';
 import { type Thresholds } from '../../lib/thresholds';
 import {
@@ -24,41 +24,41 @@ interface WorkflowViewProps {
   thresholds: Thresholds;
   onComplete?: () => void;
   initiallyComplete?: boolean;
+  onNodeClick?: (nodeId: NodeId) => void;
+  processed?: boolean;
 }
 
 // ─── Connector SVG ─────────────────────────────────────────────────────────────
 function Connector({ active, animated }: { active: boolean; animated: boolean }) {
-  const pathRef = useRef<SVGPathElement>(null);
-
-  useEffect(() => {
-    if (!pathRef.current) return;
-    const len = pathRef.current.getTotalLength();
-    if (animated) {
-      pathRef.current.style.strokeDasharray = `${len}`;
-      pathRef.current.style.strokeDashoffset = `${len}`;
-      pathRef.current.style.transition = 'stroke-dashoffset 0.8s ease-in-out';
-      requestAnimationFrame(() => {
-        if (pathRef.current) pathRef.current.style.strokeDashoffset = '0';
-      });
-    } else {
-      pathRef.current.style.strokeDasharray = 'none';
-      pathRef.current.style.strokeDashoffset = '0';
-      pathRef.current.style.transition = 'none';
-    }
-  }, [animated]);
-
   return (
-    <div className="flex items-center" style={{ width: 64, flexShrink: 0 }}>
-      <svg width="64" height="40" viewBox="0 0 64 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="flex items-center" style={{ width: 50, flexShrink: 0 }}>
+      <svg width="50" height="40" viewBox="0 0 50 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+        {/* Background track path */}
         <path
-          ref={pathRef}
-          d="M 0 20 C 20 20, 44 20, 64 20"
-          stroke={active ? '#55B4A6' : '#e8e0d8'}
-          strokeWidth="2"
+          d="M 0 20 L 50 20"
+          stroke={active ? "rgba(85, 180, 166, 0.15)" : "rgba(0, 0, 0, 0.05)"}
+          strokeWidth="3"
           strokeLinecap="round"
           fill="none"
         />
-        <polygon points="58,15 64,20 58,25" fill={active ? '#55B4A6' : '#e8e0d8'} />
+        {/* Flow light path overlay */}
+        <path
+          d="M 0 20 L 50 20"
+          stroke={active ? '#55B4A6' : 'transparent'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          className={active && animated ? "connector-dash-flow glow-teal-sm" : ""}
+          fill="none"
+        />
+        {/* Endpoint arrow head */}
+        <path
+          d="M 43 15 L 50 20 L 43 25"
+          stroke={active ? '#55B4A6' : 'rgba(0, 0, 0, 0.15)'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
       </svg>
     </div>
   );
@@ -82,52 +82,77 @@ function WorkflowNode({
   color: { ring: string; bg: string; icon: string; text: string };
   onClick: () => void;
 }) {
+  const isRunning = status === 'running';
+  const isDone = status === 'done';
+  const isPending = status === 'pending';
+
+  const pulseClass = 
+    id === 'injection' ? 'pulse-ring-teal-active' :
+    id === 'verification' ? 'pulse-ring-violet-active' :
+    'pulse-ring-emerald-active';
+
   return (
     <motion.button
       onClick={onClick}
-      disabled={status === 'pending'}
+      disabled={isPending}
       className={`
-        relative flex flex-col items-center gap-3 rounded-2xl border-2 p-6
-        w-52 text-left transition-all
-        ${status === 'pending' ? 'border-border bg-background opacity-50 cursor-not-allowed' : ''}
-        ${status === 'running' ? 'border-brand-teal/40 bg-brand-teal/10 shadow-md' : ''}
-        ${status === 'done' ? `${color.ring} bg-background shadow-sm hover:shadow-md cursor-pointer` : ''}
+        relative flex flex-col items-start gap-2 rounded-xl border p-3
+        w-[13rem] text-left transition-all duration-300 backdrop-blur-md
+        ${isPending ? 'border-border/30 bg-background/15 opacity-35 cursor-not-allowed' : ''}
+        ${isRunning ? `border-brand-teal/40 bg-brand-teal/5 shadow-xs ${pulseClass}` : ''}
+        ${isDone ? `glass-panel hover-glass-card cursor-pointer border-foreground/5 ${color.ring}` : ''}
       `}
-      whileHover={status === 'done' ? { scale: 1.02 } : {}}
-      whileTap={status === 'done' ? { scale: 0.98 } : {}}
+      whileHover={isDone ? { scale: 1.01 } : {}}
+      whileTap={isDone ? { scale: 0.99 } : {}}
     >
-      <div className="absolute top-3 right-3">
-        {status === 'running' && <Loader2 className="size-4 text-brand-teal animate-spin" />}
-        {status === 'done' && <CheckCircle className="size-4 text-emerald-500" />}
+      <div className="flex items-center gap-2.5 w-full">
+        <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ${
+          isDone ? color.bg : isRunning ? 'bg-brand-teal/10' : 'bg-muted'
+        }`}>
+          <Icon className={`size-4.5 transition-transform ${
+            isDone ? color.icon : isRunning ? 'text-brand-teal' : 'text-muted-foreground'
+          }`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`font-bold text-xs tracking-tight transition-colors ${
+            isDone ? 'text-foreground' : isRunning ? 'text-brand-teal' : 'text-muted-foreground'
+          }`}>{label}</p>
+        </div>
+        <div className="shrink-0 flex items-center justify-center">
+          {isRunning && (
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-teal opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-teal"></span>
+            </span>
+          )}
+          {isDone && <CheckCircle className="size-4 text-brand-teal glow-teal-sm" />}
+        </div>
       </div>
 
-      <div className={`size-12 rounded-xl ${status === 'done' ? color.bg : 'bg-muted'} flex items-center justify-center`}>
-        <Icon className={`size-6 ${status === 'done' ? color.icon : 'text-muted-foreground'}`} />
-      </div>
-
-      <div>
-        <p className={`font-semibold text-sm ${status === 'done' ? color.text : 'text-muted-foreground'}`}>{label}</p>
-      </div>
-
-      {status === 'done' && (
+      {isDone && (
         <motion.div
-          initial={{ opacity: 0, y: 4 }}
+          initial={{ opacity: 0, y: 2 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-muted-foreground text-center space-y-0.5"
+          className="text-[10px] text-muted-foreground leading-normal w-full space-y-0.5 pt-1.5 border-t border-foreground/5 font-medium pl-0.5"
         >
           {summary}
         </motion.div>
       )}
 
-      {status === 'done' && (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-          <span>Details</span>
-          <ChevronRight className="size-3" />
+      {isDone && (
+        <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground/60 font-bold pl-0.5 hover:text-brand-teal transition-colors">
+          <span>{
+            id === 'injection' ? 'New Ingestion' :
+            id === 'verification' ? 'Define Logic' :
+            'Breakdown'
+          }</span>
+          <ChevronRight className="size-2.5" />
         </div>
       )}
     </motion.button>
   );
 }
+
 
 // ─── Category badge ─────────────────────────────────────────────────────────────
 function CategoryBadge({ category }: { category: PatientCategory }) {
@@ -439,7 +464,15 @@ function ReportingDrawer({ classified }: { classified: ClassifiedPatient[] }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function WorkflowView({ filename, patients, thresholds, onComplete, initiallyComplete = false }: WorkflowViewProps) {
+export default function WorkflowView({
+  filename,
+  patients,
+  thresholds,
+  onComplete,
+  initiallyComplete = false,
+  onNodeClick,
+  processed = false,
+}: WorkflowViewProps) {
   const [nodeStatuses, setNodeStatuses] = useState<Record<NodeId, NodeStatus>>(() =>
     initiallyComplete
       ? { injection: 'done', verification: 'done', reporting: 'done' }
@@ -454,32 +487,45 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
   const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
   const classified = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
   const cats = useMemo(() => getByCategory(classified), [classified]);
-  const enabledRules = thresholds.rules.filter(r => r.enabled);
 
   useEffect(() => {
-    if (initiallyComplete) {
-      onComplete?.();
+    // If not processed, reset to pending
+    if (!processed && !initiallyComplete) {
+      setNodeStatuses({ injection: 'pending', verification: 'pending', reporting: 'pending' });
+      setConnectorActive({ c1: false, c2: false });
+      setConnectorAnimated({ c1: false, c2: false });
       return;
     }
-    const t1 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'running' })), 100);
-    const t2 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'done' })), 1400);
-    const t3 = setTimeout(() => {
-      setConnectorActive(s => ({ ...s, c1: true }));
-      setConnectorAnimated(s => ({ ...s, c1: true }));
-    }, 1600);
-    const t4 = setTimeout(() => setNodeStatuses(s => ({ ...s, verification: 'running' })), 1800);
-    const t5 = setTimeout(() => setNodeStatuses(s => ({ ...s, verification: 'done' })), 3100);
-    const t6 = setTimeout(() => {
-      setConnectorActive(s => ({ ...s, c2: true }));
-      setConnectorAnimated(s => ({ ...s, c2: true }));
-    }, 3300);
-    const t7 = setTimeout(() => setNodeStatuses(s => ({ ...s, reporting: 'running' })), 3500);
-    const t8 = setTimeout(() => {
-      setNodeStatuses(s => ({ ...s, reporting: 'done' }));
-      onComplete?.();
-    }, 4800);
-    return () => [t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
-  }, []);
+
+    // If processed and already complete (or animationSeen), set all done
+    if (processed && initiallyComplete) {
+      setNodeStatuses({ injection: 'done', verification: 'done', reporting: 'done' });
+      setConnectorActive({ c1: true, c2: true });
+      return;
+    }
+
+    // If processed is true and not complete, run animation
+    if (processed && !initiallyComplete) {
+      const t1 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'running' })), 100);
+      const t2 = setTimeout(() => setNodeStatuses(s => ({ ...s, injection: 'done' })), 1400);
+      const t3 = setTimeout(() => {
+        setConnectorActive(s => ({ ...s, c1: true }));
+        setConnectorAnimated(s => ({ ...s, c1: true }));
+      }, 1600);
+      const t4 = setTimeout(() => setNodeStatuses(s => ({ ...s, verification: 'running' })), 1800);
+      const t5 = setTimeout(() => setNodeStatuses(s => ({ ...s, verification: 'done' })), 3100);
+      const t6 = setTimeout(() => {
+        setConnectorActive(s => ({ ...s, c2: true }));
+        setConnectorAnimated(s => ({ ...s, c2: true }));
+      }, 3300);
+      const t7 = setTimeout(() => setNodeStatuses(s => ({ ...s, reporting: 'running' })), 3500);
+      const t8 = setTimeout(() => {
+        setNodeStatuses(s => ({ ...s, reporting: 'done' }));
+        onComplete?.();
+      }, 4800);
+      return () => [t1, t2, t3, t4, t5, t6, t7, t8].forEach(clearTimeout);
+    }
+  }, [processed, initiallyComplete, onComplete]);
 
   const nodes: {
     id: NodeId;
@@ -492,67 +538,62 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
       id: 'injection',
       icon: Database,
       label: 'Data Injection',
-      color: { ring: 'border-blue-200', bg: 'bg-blue-50', icon: 'text-blue-600', text: 'text-blue-700' },
+      color: { ring: 'border-blue-500/20 shadow-blue-500/5', bg: 'bg-blue-500/10', icon: 'text-blue-500', text: 'text-blue-500' },
       summary: (
-        <>
-          <p className="font-semibold text-foreground">CSV</p>
-          <p>{patients.length} patients ingested</p>
-        </>
+        <div className="text-[10px] text-muted-foreground font-semibold">
+          <span>CSV · {patients.length} patients</span>
+        </div>
       ),
     },
     {
       id: 'verification',
       icon: ShieldCheck,
       label: 'Verification',
-      color: { ring: 'border-violet-200', bg: 'bg-violet-50', icon: 'text-violet-600', text: 'text-violet-700' },
+      color: { ring: 'border-violet-500/20 shadow-violet-500/5', bg: 'bg-violet-500/10', icon: 'text-violet-500', text: 'text-violet-500' },
       summary: (
-        <>
+        <div className="space-y-0.5 text-[10px] text-muted-foreground font-semibold leading-tight">
           <p>
-            <span className="text-brand-teal font-semibold">{cats.pass.length + cats.onTrack.length}</span>
-            {' meeting · '}
-            <span className="text-brand-amber font-semibold">{cats.fail.length + cats.flagged.length}</span>
-            {' not'}
+            <span className="text-brand-teal font-bold">{cats.pass.length} Pass</span> ·{' '}
+            <span className="text-brand-amber font-bold">{cats.fail.length} Fail</span>
           </p>
-          <p>{enabledRules.length} rule{enabledRules.length !== 1 ? 's' : ''}</p>
-        </>
+          <p>
+            <span className="text-brand-teal font-bold">{cats.onTrack.length} Track</span> ·{' '}
+            <span className="text-brand-amber font-bold">{cats.flagged.length} Flag</span>
+          </p>
+        </div>
       ),
     },
     {
       id: 'reporting',
       icon: FileText,
       label: 'Reporting',
-      color: { ring: 'border-emerald-200', bg: 'bg-emerald-50', icon: 'text-emerald-600', text: 'text-emerald-700' },
+      color: { ring: 'border-emerald-500/20 shadow-emerald-500/5', bg: 'bg-emerald-500/10', icon: 'text-emerald-500', text: 'text-emerald-500' },
       summary: (
-        <>
-          <p>
-            <span className="text-brand-teal font-semibold">{cats.pass.length} pass</span>
-            {' · '}
-            <span className="text-brand-amber font-semibold">{cats.fail.length} fail</span>
-          </p>
-          <p>
-            <span className="text-brand-teal font-semibold">{cats.onTrack.length} on track</span>
-            {' · '}
-            <span className="text-brand-amber font-semibold">{cats.flagged.length} flagged</span>
-          </p>
-        </>
+        <div className="text-[10px] text-muted-foreground font-semibold leading-tight">
+          <p>Reports generated</p>
+          <p className="text-[9px] text-brand-teal font-bold mt-0.5">Ready to audit</p>
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="mt-8">
-      <div className="mb-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Processing pipeline</p>
-        <p className="text-sm text-muted-foreground mt-0.5">Click any node to inspect details</p>
-      </div>
-
-      <div className="flex items-center justify-center py-10 px-6 rounded-2xl border bg-muted gap-0">
+    <div className="mt-0">
+      <div className="flex items-center justify-center py-4 px-4 rounded-xl border bg-muted/20 backdrop-blur-md bg-dot-grid border-foreground/5 gap-0 shadow-xs">
         {nodes.map((node, i) => (
           <div key={node.id} className="flex items-center">
             <WorkflowNode
               {...node}
               status={nodeStatuses[node.id]}
-              onClick={() => nodeStatuses[node.id] === 'done' && setDrawerOpen(node.id)}
+              onClick={() => {
+                if (nodeStatuses[node.id] === 'done') {
+                  if (onNodeClick) {
+                    onNodeClick(node.id);
+                  } else {
+                    setDrawerOpen(node.id);
+                  }
+                }
+              }}
             />
             {i < nodes.length - 1 && (
               <Connector
@@ -563,6 +604,7 @@ export default function WorkflowView({ filename, patients, thresholds, onComplet
           </div>
         ))}
       </div>
+
 
       <Sheet open={drawerOpen === 'injection'} onOpenChange={v => !v && setDrawerOpen(null)}>
         <SheetContent className="w-[780px] sm:max-w-[780px] overflow-y-auto px-8 py-6">

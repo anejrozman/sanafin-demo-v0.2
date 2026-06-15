@@ -1,52 +1,56 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Upload, FileText, CheckCircle, AlertCircle, Download, Loader2 } from 'lucide-react';
 import WorkflowView from './WorkflowView';
-import { motion, AnimatePresence } from 'motion/react';
-import { useLocation, useNavigate } from 'react-router';
 import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
 import { getAsOfDate, getStatusCounts } from '../../lib/selectors';
 
-export default function DataUpload() {
+interface DataUploadProps {
+  initialTab?: 'sample' | 'upload';
+  onClose?: () => void;
+  onNodeClick?: (nodeId: 'injection' | 'verification' | 'reporting') => void;
+}
+
+export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps) {
   const {
     patients, dataSource, thresholds, isLoading,
     processed, setProcessed,
     animationSeen, setAnimationSeen,
     setUploadedPatients, clearUploadedData,
   } = useData();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const navTab = (location.state as { initialTab?: string } | null)?.initialTab;
 
   const [uploadPanelOpen, setUploadPanelOpen] = useState(
-    () => navTab === 'upload' || dataSource === 'uploaded',
+    () => initialTab === 'upload' || dataSource === 'uploaded',
   );
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
-  // Derive a display filename for the WorkflowView header when restoring from localStorage.
-  const [processedFilename, setProcessedFilename] = useState<string>(() => {
-    if (processed && dataSource === 'uploaded') return 'uploaded cohort';
-    if (processed && dataSource === 'sample') return 'sanafin-patient-template.csv';
-    return '';
-  });
+  const [processedFilename, setProcessedFilename] = useState<string>('');
   const [parseError, setParseError] = useState<string | null>(null);
-  // Mirrors animationSeen from the store so the View Dashboard button persists across navigation.
-  const [animationDone, setAnimationDone] = useState(() => animationSeen);
 
   const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
   const statusCounts = useMemo(() => getStatusCounts(patients, asOf), [patients, asOf]);
 
-  // React Router doesn't remount when navigating to the same route, so the useState
-  // initializer won't re-run. This effect re-applies the tab intent on every navigation.
+  // Sync tab open state when initialTab prop changes
   useEffect(() => {
-    if (navTab === 'upload') setUploadPanelOpen(true);
-    else if (navTab === 'sample') setUploadPanelOpen(false);
-  }, [navTab]);
+    if (initialTab === 'upload') setUploadPanelOpen(true);
+    else if (initialTab === 'sample') setUploadPanelOpen(false);
+  }, [initialTab]);
+
+  // Keep processedFilename in sync with processed and dataSource
+  useEffect(() => {
+    if (processed) {
+      if (dataSource === 'uploaded') {
+        setProcessedFilename(prev => prev || 'uploaded cohort');
+      } else if (dataSource === 'sample') {
+        setProcessedFilename('sanafin-patient-template.csv');
+      }
+    } else {
+      setProcessedFilename('');
+    }
+  }, [processed, dataSource]);
 
   function handleSampleUpload() {
     if (dataSource === 'uploaded') {
@@ -102,8 +106,7 @@ export default function DataUpload() {
     setProcessedFilename('');
     setUploadedFile(null);
     setParseError(null);
-    setUploadPanelOpen(false);
-    setAnimationDone(false);
+    setUploadPanelOpen(true);
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -140,245 +143,213 @@ export default function DataUpload() {
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1>Data Upload</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload participant data — SanaFin verifies outcomes against outcome targets.
-          </p>
-        </div>
-        {processed && (
-          <Button variant="outline" size="sm" onClick={handleClearAndReset}>
-            {dataSource === 'uploaded' ? 'Clear uploaded data' : 'New Upload'}
-          </Button>
-        )}
-      </div>
+    <div id="upload-section" className="px-6 py-4 border-b border-muted-foreground/10 bg-background/5 rounded-2xl glass-panel">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        {/* Left Column: Text and Actions */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="space-y-1">
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Data Ingestion</h1>
+            <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
+              Upload participant cohort data to verify clinical outcomes against targets.
+            </p>
+          </div>
 
-      <AnimatePresence mode="wait">
-        {!processed ? (
-          <motion.div
-            key="upload-form"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-6"
-          >
-            <Alert>
-              <AlertCircle className="size-4" />
-              <AlertTitle>Data Privacy & Security</AlertTitle>
-              <AlertDescription>
-                All patient data must be de-identified. Patient IDs should be pseudonymised.
-                Data is encrypted in transit and at rest.
-              </AlertDescription>
-            </Alert>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload Participant Outcome Data</CardTitle>
-                <CardDescription>
-                  CSV with one row per patient, download template for required format. You can use the sample dataset or upload your own.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  <div className="flex items-center gap-2 text-muted-foreground py-4">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-sm">Loading sample data…</span>
-                  </div>
-                ) : (
-                  <>
-                    {/* Data source chooser */}
-                    <div className="flex gap-1 p-1 bg-muted rounded-lg">
-                      <button
-                        onClick={() => {
-                          setUploadPanelOpen(false);
-                          if (dataSource === 'uploaded') clearUploadedData();
-                        }}
-                        className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                          sampleTabActive
-                            ? 'bg-background shadow-sm text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Use sample dataset
-                      </button>
-                      <button
-                        onClick={() => setUploadPanelOpen(true)}
-                        className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                          uploadTabActive
-                            ? 'bg-background shadow-sm text-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Upload your own dataset
-                      </button>
-                    </div>
-
-                    {/* Sample panel */}
-                    {!uploadPanelOpen && (
-                      <div className="space-y-3">
-                        <div className="rounded-lg border bg-muted/50 p-4 text-sm">
-                          <p className="text-sm font-medium text-foreground">Sample cohort loaded</p>
-                          <p className="text-muted-foreground mt-1">
-                            {patients.length} patients · sanafin-patient-template.csv
-                          </p>
-                          {asOf && (
-                            <p className="text-muted-foreground mt-0.5 text-xs">
-                              {statusCounts.completed} completed · {statusCounts.active} active (as of {fmtAsOf(asOf)})
-                            </p>
-                          )}
-                          {dataSource === 'uploaded' && (
-                            <p className="text-amber-600 mt-1 text-xs">
-                              Currently using uploaded data. Switch to sample to clear it.
-                            </p>
-                          )}
-                        </div>
-                        <Button onClick={handleSampleUpload} disabled={processing}>
-                          {processing ? (
-                            <>
-                              <Loader2 className="size-4 mr-2 animate-spin" />
-                              Loading…
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="size-4 mr-2" />
-                              Start with sample data
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Upload panel */}
-                    {uploadPanelOpen && (
-                      <div className="space-y-4">
-                        <div
-                          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                            dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
-                          }`}
-                          onDragEnter={handleDrag}
-                          onDragLeave={handleDrag}
-                          onDragOver={handleDrag}
-                          onDrop={handleDrop}
-                        >
-                          <Upload className="size-12 mx-auto mb-4 text-muted-foreground" />
-                          <h3 className="font-semibold mb-2">
-                            {uploadedFile ? `Selected: ${uploadedFile.name}` : 'Drag and drop CSV file here'}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-4">or</p>
-                          <div className="relative inline-block">
-                            <input
-                              type="file"
-                              accept=".csv"
-                              onChange={handleFileChange}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <Button variant="outline">Browse Files</Button>
-                          </div>
-                        </div>
-
-                        {uploadedFile && !parseError && (
-                          <Alert className="bg-green-50 border-green-200">
-                            <CheckCircle className="size-4 text-green-600" />
-                            <AlertTitle>File ready</AlertTitle>
-                            <AlertDescription className="flex items-center justify-between">
-                              <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">
-                                {uploadedFile.name}
-                              </span>
-                              <Button size="sm" className="ml-4" onClick={handleProcess} disabled={processing}>
-                                {processing ? (
-                                  <>
-                                    <Loader2 className="size-4 mr-2 animate-spin" />
-                                    Processing…
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="size-4 mr-2" />
-                                    Process Upload
-                                  </>
-                                )}
-                              </Button>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        {parseError && (
-                          <Alert variant="destructive">
-                            <AlertCircle className="size-4" />
-                            <AlertTitle>Upload Error</AlertTitle>
-                            <AlertDescription>{parseError}</AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="pt-2">
-                      <Button variant="outline" asChild>
-                        <a href="/sanafin-patient-template.csv" download="sanafin-patient-template.csv">
-                          <Download className="size-4 mr-2" />
-                          Download CSV Template
-                        </a>
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="workflow"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="size-5 text-emerald-500" />
-                  Cohort processing started
-                </CardTitle>
-                <CardDescription>
-                  <span className="font-mono text-xs bg-muted rounded px-1.5 py-0.5">{processedFilename}</span>
-                  {' '}— watching pipeline run
-                </CardDescription>
-                {asOf && (
-                  <p className="text-xs text-muted-foreground">
-                    {statusCounts.total} patients · {statusCounts.completed} completed · {statusCounts.active} active (as of {fmtAsOf(asOf)})
-                  </p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <WorkflowView
-                  filename={processedFilename}
-                  patients={patients}
-                  thresholds={thresholds}
-                  initiallyComplete={animationSeen}
-                  onComplete={() => {
-                    setAnimationDone(true);
-                    setAnimationSeen(true);
-                  }}
-                />
-                <AnimatePresence>
-                  {animationDone && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex justify-center mt-8"
+          {!processed ? (
+            <div className="space-y-3">
+              {isLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-1">
+                  <Loader2 className="size-3.5 animate-spin text-brand-teal" />
+                  <span className="text-[11px] font-semibold">Loading data…</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Compact tabs */}
+                  <div className="flex gap-1 p-1 bg-muted/40 rounded-lg border border-foreground/5 glass-panel max-w-[220px]">
+                    <button
+                      onClick={() => {
+                        setUploadPanelOpen(false);
+                        if (dataSource === 'uploaded') clearUploadedData();
+                      }}
+                      className={`flex-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        sampleTabActive
+                          ? 'bg-background shadow-xs text-brand-teal border border-foreground/5'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
                     >
-                      <Button onClick={() => navigate('/')}>
-                        View Dashboard
+                      Sample Data
+                    </button>
+                    <button
+                      onClick={() => setUploadPanelOpen(true)}
+                      className={`flex-1 py-1 px-2 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        uploadTabActive
+                          ? 'bg-background shadow-xs text-brand-teal border border-foreground/5'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Upload CSV
+                    </button>
+                  </div>
+
+                  {/* Sample Dataset Controls */}
+                  {!uploadPanelOpen && (
+                    <div className="space-y-2.5">
+                      <div className="text-[11px] text-muted-foreground font-semibold leading-normal">
+                        <p className="text-foreground font-bold">sanafin-patient-template.csv</p>
+                        <p className="mt-0.5">{patients.length} mock patient records loaded.</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="font-bold bg-brand-teal hover:bg-brand-teal/90 glow-teal-sm text-white px-4 h-8 rounded-lg cursor-pointer text-xs"
+                        onClick={handleSampleUpload}
+                        disabled={processing}
+                      >
+                        {processing ? (
+                          <>
+                            <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                            Ingesting…
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="size-3.5 mr-1.5" />
+                            Ingest Sample Cohort
+                          </>
+                        )}
                       </Button>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+                  {/* Upload File Controls */}
+                  {uploadPanelOpen && (
+                    <div className="space-y-2.5">
+                      <div
+                        className={`relative border border-dashed rounded-xl p-3 text-center transition-all ${
+                          dragActive
+                            ? 'border-brand-teal bg-brand-teal/5'
+                            : 'border-muted-foreground/25 bg-muted/10 hover:border-brand-teal/30 hover:bg-muted/15'
+                        }`}
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                      >
+                        <Upload className="size-5 mx-auto mb-1 text-brand-teal/80" />
+                        <p className="text-[10px] font-bold text-foreground">
+                          {uploadedFile ? `Selected: ${uploadedFile.name}` : 'Drag CSV here or click to browse'}
+                        </p>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </div>
+
+                      {uploadedFile && !parseError && (
+                        <div className="flex gap-2 text-[10.5px] items-center justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-foreground truncate">{uploadedFile.name}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="font-bold bg-brand-teal hover:bg-brand-teal/90 glow-teal-sm text-white h-7 px-3 text-[10px] rounded-md cursor-pointer shrink-0"
+                            onClick={handleProcess}
+                            disabled={processing}
+                          >
+                            {processing ? (
+                              <>
+                                <Loader2 className="size-3 mr-1 animate-spin" />
+                                Processing…
+                              </>
+                            ) : (
+                              'Process Ingestion'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {parseError && (
+                        <div className="flex gap-2 text-[10px] text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-2 items-start">
+                          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+                          <p className="font-semibold leading-tight">{parseError}</p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-[10px]">
+                        <a
+                          href="/sanafin-patient-template.csv"
+                          download="sanafin-patient-template.csv"
+                          className="text-brand-teal hover:underline font-bold inline-flex items-center gap-1"
+                        >
+                          <Download className="size-3" />
+                          Download Template CSV
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <CheckCircle className="size-3.5 text-brand-teal glow-teal-sm animate-pulse" />
+                  Ingestion Pipeline Active
+                </h2>
+                <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <span className="font-mono text-[9px] bg-muted/65 border border-foreground/5 rounded px-1.5 py-0.5 text-foreground font-semibold">
+                    {processedFilename}
+                  </span>
+                </p>
+              </div>
+
+              {asOf && (
+                <div className="text-[11px] text-muted-foreground leading-normal font-semibold">
+                  <p className="font-bold text-foreground">
+                    {statusCounts.total} patients · {statusCounts.completed} completed · {statusCounts.active} active
+                  </p>
+                  <p className="text-[9.5px] text-muted-foreground/80 mt-0.5">(as of {fmtAsOf(asOf)})</p>
+                </div>
+              )}
+
+              <div className="pt-1 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAndReset}
+                  className="font-bold text-[11px] h-7 rounded-md cursor-pointer px-2.5"
+                >
+                  New Ingestion
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Data Privacy warning */}
+          <div className="flex gap-2 text-[10px] text-muted-foreground/80 items-start pt-2 border-t border-muted-foreground/5">
+            <AlertCircle className="size-3.5 text-muted-foreground/60 shrink-0 mt-0.5" />
+            <p className="font-medium leading-normal">
+              All patient data is de-identified locally. Patient IDs pseudonymised. Encrypted in transit.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: WorkflowView Nodes (Minimal vertical space) */}
+        <div className="lg:col-span-8">
+          <WorkflowView
+            filename={processedFilename}
+            patients={patients}
+            thresholds={thresholds}
+            initiallyComplete={animationSeen}
+            onComplete={() => {
+              setAnimationSeen(true);
+            }}
+            onNodeClick={onNodeClick}
+            processed={processed}
+          />
+        </div>
+      </div>
     </div>
   );
 }
+

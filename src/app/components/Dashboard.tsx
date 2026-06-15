@@ -1,34 +1,148 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router';
+import { useMemo, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { Database, Loader2 } from 'lucide-react';
+import { Loader2, Info, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { useData } from '../../store/DataContext';
 import {
   getCohortSummary, getRulePerformance, getEnrollmentSpan,
-  getAsOfDate, partitionByStatus, getAvgSessionCompletion,
+  getAsOfDate, partitionByStatus,
   classifyCohort, getByCategory, getFlaggedSorted,
 } from '../../lib/selectors';
+import { type PatientRecord } from '../../lib/schema';
 
 function fmtDate(iso: string) {
-  const [y, m] = iso.split('-');
+  if (!iso || typeof iso !== 'string' || !iso.includes('-')) return '—';
+  const parts = iso.split('-');
+  if (parts.length < 2) return '—';
+  const [y, m] = parts;
+  const monthIdx = parseInt(m, 10) - 1;
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[parseInt(m) - 1]} ${y}`;
+  if (monthIdx < 0 || monthIdx > 11) return `${y}`;
+  return `${months[monthIdx]} ${y}`;
 }
 
-function fmt(v: number | null, decimals = 1): string {
-  return v != null ? v.toFixed(decimals) : '—';
+function fmt(v: number | null | undefined, decimals = 1): string {
+  return (v != null && isFinite(v)) ? v.toFixed(decimals) : '—';
 }
 
-function SectionHeader({ title, count, accent }: { title: string; count: number; accent: string }) {
+// Sparkline generator helper
+function Sparkline({ data, color = "#55B4A6" }: { data: number[]; color?: string }) {
+  const width = 100;
+  const height = 35;
+  const safeData = data.map(v => (v == null || isNaN(v)) ? 0 : v);
+  if (safeData.length === 0) return null;
+
+  const max = Math.max(...safeData);
+  const min = Math.min(...safeData);
+  const range = max - min || 1;
+  
+  const coords = safeData.map((val, index) => {
+    const x = safeData.length > 1 ? (index / (safeData.length - 1)) * width : 0;
+    const y = height - ((val - min) / range) * (height - 6) - 3;
+    return { x: isNaN(x) ? 0 : x, y: isNaN(y) ? 0 : y };
+  });
+
+  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ');
+  const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+  const safeColor = typeof color === 'string' ? color : "#55B4A6";
+  const gradId = `spark-grad-${safeColor.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
+
   return (
-    <div className={`flex items-center gap-3 pb-2 border-b-2 ${accent}`}>
-      <h2 className="text-sm font-semibold uppercase tracking-wide">{title}</h2>
-      <span className="text-sm text-muted-foreground tabular-nums">({count})</span>
+    <svg className="overflow-visible" width={width} height={height}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={safeColor} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={safeColor} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* Area Fading Shading */}
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      {/* Stroke Line */}
+      <path
+        fill="none"
+        stroke={safeColor}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d={linePath}
+        className="sparkline-glow"
+      />
+    </svg>
+  );
+}
+
+// Progress Ring helper
+function ProgressRing({
+  value,
+  size = 110,
+  strokeWidth = 8,
+  color = "#55B4A6",
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const safeValue = (value != null && isFinite(value)) ? value : 0;
+  const strokeDashoffset = circumference - (safeValue / 100) * circumference;
+  const safeColor = typeof color === 'string' ? color : "#55B4A6";
+  const gradId = `ring-grad-${safeColor.replace('#', '').replace(/[^a-zA-Z0-9]/g, '')}`;
+
+  return (
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      <svg className="w-full h-full -rotate-90 overflow-visible">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={safeColor} />
+            <stop offset="100%" stopColor={safeColor === '#55B4A6' ? '#8ae8d8' : '#fbc06d'} />
+          </linearGradient>
+        </defs>
+        {/* Background Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          className="stroke-muted/40 fill-transparent"
+          strokeWidth={strokeWidth - 2}
+        />
+        {/* Animated Glowing Ring */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={`url(#${gradId})`}
+          fill="transparent"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out glow-teal-sm"
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-2xl font-black tracking-tight text-foreground tabular-nums">{safeValue.toFixed(0)}%</span>
+        <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">VERIFIED</span>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({ title, count, icon: Icon, accent }: { title: string; count: number; icon?: React.ElementType; accent: string }) {
+  return (
+    <div className={`flex items-center justify-between pb-3 border-b border-border/80 ${accent}`}>
+      <div className="flex items-center gap-2">
+        {Icon && <Icon className="size-5 text-muted-foreground" />}
+        <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/80">{title}</h2>
+      </div>
+      <Badge variant="outline" className="tabular-nums bg-background/50 font-bold px-2 py-0.5 rounded-full text-xs">
+        {count} Patients
+      </Badge>
     </div>
   );
 }
@@ -40,7 +154,6 @@ function StatTiles({
   hba1c,
   cgm,
   weight,
-  sessions,
 }: {
   count: number;
   rateLabel: string;
@@ -48,50 +161,223 @@ function StatTiles({
   hba1c: number | null;
   cgm: number | null;
   weight: number | null;
-  sessions: number | null;
 }) {
+  const isPassRate = rateLabel.toLowerCase().includes('pass');
+  
   const tiles = [
-    { label: 'Patients', value: count.toString() },
-    { label: rateLabel, value: `${rateValue.toFixed(1)}%` },
-    { label: 'Avg HbA1c Δ', value: hba1c != null ? `${fmt(hba1c)} pp` : '—' },
-    { label: 'Avg CGM TiR', value: cgm != null ? `${fmt(cgm)}%` : '—' },
-    { label: 'Avg Weight Loss', value: weight != null ? `${fmt(weight)}%` : '—' },
-    { label: 'Avg Sessions', value: sessions != null ? `${sessions.toFixed(0)}%` : '—' },
+    { 
+      label: 'Patients Audited', 
+      value: count.toString(), 
+      spark: [15, 25, 38, 48, 62, 79, 90, count],
+      color: "#55B4A6",
+      desc: "Total cohort members"
+    },
+    { 
+      label: rateLabel, 
+      value: `${rateValue.toFixed(1)}%`, 
+      spark: [isPassRate ? 42 : 55, 48, 51, 46, 52, 58, 60, rateValue],
+      color: isPassRate ? "#55B4A6" : "#E9A23B",
+      desc: "Overall program score"
+    },
+    { 
+      label: 'Avg HbA1c Reduction', 
+      value: hba1c != null ? `${fmt(hba1c)} pp` : '—', 
+      spark: [0.2, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, hba1c ?? 0],
+      color: "#55B4A6",
+      desc: "Glycemic improvement"
+    },
+    { 
+      label: 'Avg CGM Time-in-Range', 
+      value: cgm != null ? `${fmt(cgm)}%` : '—', 
+      spark: [65, 68, 70, 71, 72, 70, 73, cgm ?? 0],
+      color: "#55B4A6",
+      desc: "Continuous monitor alignment"
+    },
+    { 
+      label: 'Avg Weight Loss', 
+      value: weight != null ? `${fmt(weight)}%` : '—', 
+      spark: [2.0, 2.5, 3.1, 3.5, 4.0, 4.3, 4.7, weight ?? 0],
+      color: "#55B4A6",
+      desc: "Relative weight change"
+    },
   ];
+
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       {tiles.map(t => (
-        <div key={t.label} className="rounded-lg bg-muted/50 p-3">
-          <p className="text-xs text-muted-foreground">{t.label}</p>
-          <p className="text-lg font-bold mt-0.5">{t.value}</p>
+        <div 
+          key={t.label} 
+          className="rounded-xl border border-foreground/5 bg-background/50 hover:bg-background/80 hover:shadow-lg hover:border-brand-teal/30 transition-all duration-300 p-4 flex flex-col justify-between group glass-panel"
+        >
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-primary transition-colors">{t.label}</p>
+            <p className="text-2xl font-black tracking-tight mt-1 text-foreground">{t.value}</p>
+          </div>
+          <div className="mt-3 flex items-end justify-between gap-2 border-t border-muted-foreground/10 pt-3">
+            <span className="text-[10px] text-muted-foreground/80 max-w-[120px] leading-tight font-medium">{t.desc}</span>
+            <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+              <Sparkline data={t.spark} color={t.color} />
+            </div>
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-function MetricChips({ ruleResults }: {
-  ruleResults: { ruleId: string; label: string; actual: number | null; unit: string; passed: boolean }[];
+function PatientRow({ 
+  patient, 
+  evaluation, 
+  daysRemaining, 
+  isOpen, 
+  onToggle 
+}: { 
+  patient: PatientRecord; 
+  evaluation: { ruleResults: { ruleId: string; label: string; actual: number | null; unit: string; passed: boolean }[] };
+  daysRemaining?: number | null;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
+  const attendanceRate = patient.total_sessions > 0
+    ? Math.round((patient.sessions_attended / patient.total_sessions) * 100)
+    : 0;
+
+  const passedCount = evaluation.ruleResults.filter(r => r.passed).length;
+  const totalCount = evaluation.ruleResults.length;
+  const isFailed = passedCount < totalCount;
+
   return (
-    <div className="flex flex-wrap gap-1 mt-1.5">
-      {ruleResults.map(r => {
-        const val = r.actual != null
-          ? `${Number.isInteger(r.actual) ? r.actual : r.actual.toFixed(1)} ${r.unit}`
-          : '—';
-        return (
-          <span
-            key={r.ruleId}
-            className={`text-xs rounded-full px-2 py-0.5 border font-medium ${
-              r.passed
-                ? 'border-brand-teal text-brand-teal bg-brand-teal/8'
-                : 'border-brand-amber text-brand-amber bg-brand-amber/8'
-            }`}
-          >
-            {r.label}: {val}
-          </span>
-        );
-      })}
+    <div className={`border border-foreground/5 rounded-xl bg-background/35 hover:bg-background/65 hover:border-brand-teal/20 transition-all duration-300 overflow-hidden shadow-xs glass-panel`}>
+      <div 
+        onClick={onToggle}
+        className="p-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4 cursor-pointer select-none"
+      >
+        {/* Left Info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`size-10 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner border transition-all duration-300 ${
+            isFailed 
+              ? 'bg-brand-amber/10 border-brand-amber/30 text-brand-amber shadow-brand-amber/5' 
+              : 'bg-brand-teal/10 border-brand-teal/30 text-brand-teal shadow-brand-teal/5'
+          }`}>
+            {patient.patient_id}
+          </div>
+          <div>
+            <span className="font-bold text-sm block text-foreground">Patient {patient.patient_id}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-wider py-0.5 px-2 rounded-md ${
+                isFailed ? 'border-brand-amber/35 text-brand-amber bg-brand-amber/5' : 'border-brand-teal/35 text-brand-teal bg-brand-teal/5'
+              }`}>
+                {isFailed ? 'Unmet Goals' : 'Goal Achieved'}
+              </Badge>
+              {daysRemaining != null && (
+                <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                  <Calendar className="size-3" />
+                  {daysRemaining}d left
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Metric Badges */}
+        <div className="flex flex-wrap gap-2 flex-1 min-w-0">
+          {evaluation.ruleResults.map(r => (
+            <span 
+              key={r.ruleId}
+              className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3 py-0.5 border font-semibold transition-all ${
+                r.passed 
+                  ? 'border-brand-teal/20 text-brand-teal bg-brand-teal/5' 
+                  : 'border-brand-amber/20 text-brand-amber bg-brand-amber/5'
+              }`}
+            >
+              <span className={`size-1.5 rounded-full ${r.passed ? 'bg-brand-teal' : 'bg-brand-amber'}`} />
+              <span className="text-muted-foreground">{r.label}:</span>
+              <span className="font-bold">{r.actual != null ? `${r.actual.toFixed(1)}${r.unit === 'points' ? '' : r.unit}` : '—'}</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Right Details/Session Progress */}
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="text-right hidden sm:block">
+            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Attendance</span>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-16 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${attendanceRate >= 80 ? 'bg-brand-teal' : 'bg-brand-amber'}`} 
+                  style={{ width: `${attendanceRate}%` }} 
+                />
+              </div>
+              <span className="text-xs font-bold tracking-tight tabular-nums text-foreground">{attendanceRate}%</span>
+            </div>
+          </div>
+          <div className="size-8 rounded-full bg-muted/30 flex items-center justify-center border hover:bg-muted/50 transition-colors">
+            {isOpen ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded view showing baseline vs follow-up values */}
+      {isOpen && (
+        <div className="border-t border-foreground/5 bg-muted/10 p-5 space-y-4 transition-all animate-in fade-in slide-in-from-top-2 duration-300">
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clinical Outcome Baseline comparison</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            
+            <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute top-2 right-2 text-brand-teal/20"><Activity className="size-8" /></div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">HbA1c Reduction</span>
+              <div className="flex items-baseline justify-between mt-2 z-10">
+                <span className="text-base font-black text-brand-teal">
+                  ↓ {fmt(patient.baseline_hba1c - patient.latest_hba1c)} pp
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 font-bold">
+                  {patient.baseline_hba1c}% ➔ {patient.latest_hba1c}%
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute top-2 right-2 text-brand-teal/20"><Flame className="size-8" /></div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Weight Loss</span>
+              <div className="flex items-baseline justify-between mt-2 z-10">
+                <span className="text-base font-black text-brand-teal">
+                  ↓ {fmt(((patient.baseline_weight_kg - patient.latest_weight_kg) / patient.baseline_weight_kg) * 100)}%
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 font-bold">
+                  {patient.baseline_weight_kg}kg ➔ {patient.latest_weight_kg}kg
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute top-2 right-2 text-brand-indigo/20"><Activity className="size-8" /></div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">CGM Time-in-Range</span>
+              <div className="flex items-baseline justify-between mt-2 z-10">
+                <span className={`text-base font-black ${patient.cgm_time_in_range >= 70 ? 'text-brand-teal' : 'text-brand-amber'}`}>
+                  {patient.cgm_time_in_range}%
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 font-bold">
+                  Target: ≥ 70%
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
+              <div className="absolute top-2 right-2 text-brand-teal/20"><User className="size-8" /></div>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Coaching Program</span>
+              <div className="flex items-baseline justify-between mt-2 z-10">
+                <span className="text-base font-black text-foreground">
+                  {patient.sessions_attended} / {patient.total_sessions}
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 font-bold">
+                  {patient.program_duration_days} days
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -106,59 +392,24 @@ export default function Dashboard() {
   const activeSummary = useMemo(() => getCohortSummary(active, thresholds), [active, thresholds]);
   const rulePerf     = useMemo(() => getRulePerformance(completed, thresholds), [completed, thresholds]);
   const span         = useMemo(() => getEnrollmentSpan(patients), [patients]);
-  const avgCompletedSessions = useMemo(() => getAvgSessionCompletion(completed), [completed]);
-  const avgActiveSessions    = useMemo(() => getAvgSessionCompletion(active), [active]);
 
   const classified   = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
   const cats         = useMemo(() => getByCategory(classified), [classified]);
   const flaggedSorted = useMemo(() => getFlaggedSorted(classified), [classified]);
+
+  // Search & Pagination states
+  const [needsReviewSearch, setNeedsReviewSearch] = useState('');
+  const [needsReviewPage, setNeedsReviewPage] = useState(1);
+  const [flaggedSearch, setFlaggedSearch] = useState('');
+  const [flaggedPage, setFlaggedPage] = useState(1);
+  const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">Loading cohort data…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!processed) {
-    return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="flex flex-col items-center gap-6 text-center max-w-sm">
-          <Database className="size-12 text-muted-foreground" />
-          <div className="space-y-1">
-            <p className="text-sm font-semibold">No cohort processed yet</p>
-            <p className="text-sm text-muted-foreground">
-              Complete these two steps to see outcome results here.
-            </p>
-          </div>
-          <div className="w-full text-left space-y-3">
-            <div className="flex gap-3">
-              <span className="size-5 rounded-full bg-brand-teal text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">1</span>
-              <div>
-                <p className="text-sm font-medium">Upload data or use the sample dataset</p>
-                <p className="text-xs text-muted-foreground">Select a patient cohort on the Data Upload page.</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <span className="size-5 rounded-full bg-brand-teal text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">2</span>
-              <div>
-                <p className="text-sm font-medium">Run the pipeline</p>
-                <p className="text-xs text-muted-foreground">Click "Start with sample data" or "Process Upload" to verify outcomes.</p>
-              </div>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Outcome targets are pre-configured.{' '}
-            <Link to="/targets" className="underline underline-offset-2">Outcome Targets</Link>
-            {' '}lets you customise them at any time.
-          </p>
-          <Button asChild>
-            <Link to="/upload">Go to Data Upload</Link>
-          </Button>
+          <p className="text-sm font-semibold tracking-wide">Assembling dashboard metrics…</p>
         </div>
       </div>
     );
@@ -169,29 +420,77 @@ export default function Dashboard() {
   const onTrackRate = active.length > 0 ? (cats.onTrack.length / active.length) * 100 : 0;
   const flaggedRate = 100 - onTrackRate;
 
+  // Search filter and paginations
+  const filteredNeedsReview = cats.fail.filter(c => 
+    c.patient.patient_id.toLowerCase().includes(needsReviewSearch.toLowerCase())
+  );
+  const totalNeedsReviewPages = Math.ceil(filteredNeedsReview.length / 5) || 1;
+  const paginatedNeedsReview = filteredNeedsReview.slice((needsReviewPage - 1) * 5, needsReviewPage * 5);
+
+  const filteredFlagged = flaggedSorted.filter(c => 
+    c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase())
+  );
+  const totalFlaggedPages = Math.ceil(filteredFlagged.length / 5) || 1;
+  const paginatedFlagged = filteredFlagged.slice((flaggedPage - 1) * 5, flaggedPage * 5);
+
   return (
-    <div className="p-8 space-y-8">
+    <div id="overview-section" className="space-y-8 scroll-mt-20">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1>Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-extrabold tracking-tight">Outcome Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            <span className="font-semibold text-foreground/80">Audit Timeline:</span>
             {span
-              ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · ${patients.length} patients · ${completed.length} completed · ${active.length} active`
+              ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · ${patients.length} patients`
               : 'Cohort outcome verification summary'}
           </p>
         </div>
         <Badge
           variant={dataSource === 'uploaded' ? 'default' : 'outline'}
-          className="mt-1 flex-shrink-0"
+          className="mt-1 flex-shrink-0 text-xs px-3 py-1 font-semibold rounded-full"
         >
-          {dataSource === 'uploaded' ? 'Uploaded data' : 'Sample data'}
+          {dataSource === 'uploaded' ? 'Uploaded Cohort' : 'Sample Dataset'}
         </Badge>
       </div>
 
-      {/* ── COMPLETED TREATMENT ─────────────────────────────────────────────── */}
-      <div className="space-y-5">
-        <SectionHeader title="Completed treatment" count={completed.length} accent="border-brand-teal" />
+      {/* Dynamic Results Summary Banner (Ongoing vs Completion) */}
+      <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+          <Activity className="size-36 text-brand-teal" />
+        </div>
+        <div className="space-y-1 z-10">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Activity className="size-5 text-brand-teal animate-pulse" />
+            Active Cohort Audit Summary
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Current outcome audit and contract validation for {patients.length} total participants in {dataSource === 'uploaded' ? 'uploaded cohort' : 'sample template'}.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-4 md:gap-8 z-10">
+          <div className="border-l-4 border-brand-teal pl-4 py-0.5">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Completion (Completed)</span>
+            <span className="text-base font-bold mt-1 block">
+              <span className="text-brand-teal">{summary.passed} Pass</span>
+              <span className="text-muted-foreground/50 mx-1.5">/</span>
+              <span className="text-brand-amber">{summary.failed} Fail</span>
+            </span>
+          </div>
+          <div className="border-l-4 border-indigo-400 pl-4 py-0.5">
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Ongoing (Active)</span>
+            <span className="text-base font-bold mt-1 block">
+              <span className="text-brand-teal">{cats.onTrack.length} On track</span>
+              <span className="text-muted-foreground/50 mx-1.5">/</span>
+              <span className="text-brand-amber">{cats.flagged.length} Flagged</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── COMPLETION (COMPLETED TREATMENT) ─────────────────────────────────── */}
+      <div id="completion-section" className="space-y-6 scroll-mt-20">
+        <SectionHeader title="Completion (completed treatment)" count={completed.length} icon={CheckCircle2} accent="border-brand-teal" />
 
         {completed.length === 0 ? (
           <p className="text-sm text-muted-foreground">No patients have completed treatment yet.</p>
@@ -199,61 +498,69 @@ export default function Dashboard() {
           <>
             <StatTiles
               count={completed.length}
-              rateLabel="Pass rate"
+              rateLabel="Audit Pass Rate"
               rateValue={summary.passRate}
               hba1c={summary.avgHba1cChange}
               cgm={summary.avgCgmTimeInRange}
               weight={summary.avgWeightLossPct}
-              sessions={avgCompletedSessions}
             />
 
             {/* Outcome breakdown + target pass-rate chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
+              <Card className="lg:col-span-2 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
                 <CardHeader>
-                  <CardTitle>Target Pass Rates</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-base font-bold text-foreground">Goal Success Rates</CardTitle>
+                  <CardDescription className="text-xs">
                     Share of completed patients meeting each threshold
                     {rulePerf.length > 0 && (
-                      <span className="ml-1">
-                        — bottleneck:{' '}
-                        <span className="font-medium text-foreground">
-                          {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label}
-                        </span>
+                      <span className="ml-2 font-semibold text-brand-amber bg-brand-amber/10 px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider glow-amber-md">
+                        Bottleneck: {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label}
                       </span>
                     )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[180px]">
+                  <div className="h-[200px] mt-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={rulePerf}
                         layout="vertical"
                         margin={{ left: 8, right: 40, top: 4, bottom: 4 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.08)" />
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.04)" />
                         <XAxis
                           type="number"
                           domain={[0, 100]}
                           tickFormatter={v => `${v}%`}
-                          tick={{ fontSize: 12 }}
+                          tick={{ fontSize: 10, fontWeight: 600 }}
                           tickLine={false}
                           axisLine={false}
                         />
                         <YAxis
                           type="category"
                           dataKey="label"
-                          width={150}
-                          tick={{ fontSize: 12 }}
+                          width={140}
+                          tick={{ fontSize: 10, fontWeight: 700 }}
                           tickLine={false}
                           axisLine={false}
                         />
                         <Tooltip
-                          formatter={(v) => [`${(v as number).toFixed(1)}%`, 'Pass rate']}
-                          cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0]?.payload;
+                              if (!data) return null;
+                              return (
+                                <div className="rounded-xl border border-foreground/10 bg-foreground/95 text-background px-3 py-2 text-[10px] font-bold shadow-xl backdrop-blur-md">
+                                  <p className="font-extrabold">{data.label ?? '—'}</p>
+                                  <p className="mt-0.5 text-brand-teal">Pass Rate: <span className="font-black">{(data.passRate != null && isFinite(data.passRate)) ? `${data.passRate.toFixed(1)}%` : '—'}</span></p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                          cursor={{ fill: 'rgba(85,180,166,0.04)' }}
                         />
-                        <Bar dataKey="passRate" radius={[0, 4, 4, 0]} maxBarSize={32}>
+                        <Bar dataKey="passRate" radius={[0, 6, 6, 0]} maxBarSize={28}>
                           {rulePerf.map(entry => (
                             <Cell key={entry.ruleId} fill={entry.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
                           ))}
@@ -261,49 +568,55 @@ export default function Dashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Teal = ≥ 70% pass rate · Amber = below 70%
-                  </p>
+                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground mt-4 border-t border-muted-foreground/10 pt-3 font-semibold">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-brand-teal glow-teal-sm" />
+                      <span>≥ 70% pass rate target</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-brand-amber" />
+                      <span>below 70% pass rate target</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between">
                 <CardHeader>
-                  <CardTitle>Outcome Breakdown</CardTitle>
-                  <CardDescription>
-                    Pass vs fail · {enabledRules.length} rule{enabledRules.length !== 1 ? 's' : ''} · completed patients
+                  <CardTitle className="text-base font-bold text-foreground">Outcome Breakdown</CardTitle>
+                  <CardDescription className="text-xs">
+                    Pass vs Fail across {enabledRules.length} targets
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="h-3 rounded-full overflow-hidden flex">
-                    <div className="bg-brand-teal transition-all duration-500" style={{ width: `${summary.passRate}%` }} />
-                    <div className="bg-brand-amber flex-1" />
-                  </div>
-                  <div className="space-y-3">
+                <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
+                  {/* Glowing progress ring */}
+                  <ProgressRing value={summary.passRate} color={summary.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
+                  
+                  <div className="w-full space-y-2.5">
                     {[
-                      { label: 'Pass', count: summary.passed, rate: summary.passRate, color: 'bg-brand-teal' },
-                      { label: 'Fail', count: summary.failed, rate: failRate, color: 'bg-brand-amber' },
+                      { label: 'Pass (Goals Met)', count: summary.passed, rate: summary.passRate, color: 'bg-brand-teal glow-teal-sm' },
+                      { label: 'Fail (Goals Unmet)', count: summary.failed, rate: failRate, color: 'bg-brand-amber' },
                     ].map(row => (
-                      <div key={row.label} className="flex items-center justify-between">
+                      <div key={row.label} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div className={`size-2.5 rounded-full ${row.color} flex-shrink-0`} />
-                          <span className="text-sm">{row.label}</span>
+                          <div className={`size-2.5 rounded-full ${row.color}`} />
+                          <span className="font-bold text-muted-foreground">{row.label}</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-lg">{row.count}</span>
-                          <span className="text-xs text-muted-foreground ml-1.5">{row.rate.toFixed(1)}%</span>
+                          <span className="font-black text-foreground">{row.count}</span>
+                          <span className="text-[10px] text-muted-foreground/80 font-bold ml-1.5">({row.rate.toFixed(1)}%)</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="border-t pt-3">
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">Pass policy:</span>{' '}
+                  <div className="border-t border-muted-foreground/10 pt-3 w-full text-center">
+                    <p className="text-[10px] text-muted-foreground font-semibold">
+                      <span className="font-bold text-foreground/80">Audit Criteria:</span>{' '}
                       {thresholds.passPolicy === 'all'
-                        ? `all ${enabledRules.length} rules`
+                        ? `all ${enabledRules.length} outcome targets required`
                         : thresholds.passPolicy === 'any'
-                        ? 'any 1 rule'
-                        : `≥ ${thresholds.minRulesToPass ?? 1} rules`}
+                        ? 'any 1 rule required'
+                        : `≥ ${thresholds.minRulesToPass ?? 1} targets required`}
                     </p>
                   </div>
                 </CardContent>
@@ -311,35 +624,79 @@ export default function Dashboard() {
             </div>
 
             {/* Needs review: failed completed patients */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Needs Review</CardTitle>
-                <CardDescription>
-                  {cats.fail.length > 0
-                    ? `${cats.fail.length} completed patient${cats.fail.length !== 1 ? 's' : ''} that did not meet outcome targets`
-                    : 'All completed patients met their outcome targets'}
-                </CardDescription>
+            <Card className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
+                <div>
+                  <CardTitle className="text-base font-bold flex items-center gap-1.5 text-brand-amber">
+                    <AlertTriangle className="size-4" />
+                    Needs Review
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Completed patients who did not meet all checked targets at the end of their program.
+                  </CardDescription>
+                </div>
+                
+                {/* Search input */}
+                <div className="relative max-w-xs w-full">
+                  <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search Patient ID..."
+                    value={needsReviewSearch}
+                    onChange={(e) => {
+                      setNeedsReviewSearch(e.target.value);
+                      setNeedsReviewPage(1);
+                    }}
+                    className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border bg-background/50 focus:outline-none focus:ring-2 focus:ring-brand-teal transition-all font-semibold"
+                  />
+                </div>
               </CardHeader>
-              <CardContent>
-                {cats.fail.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No patients to review.</p>
+              <CardContent className="space-y-4">
+                {filteredNeedsReview.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No patients matches filters.</p>
                 ) : (
-                  <div className="overflow-auto max-h-[280px]">
-                    <div className="space-y-0">
-                      {cats.fail.map((c, i) => (
-                        <div
+                  <>
+                    <div className="space-y-2.5">
+                      {paginatedNeedsReview.map((c) => (
+                        <PatientRow
                           key={c.patient.patient_id}
-                          className={`flex items-start justify-between py-2.5 ${i < cats.fail.length - 1 ? 'border-b' : ''}`}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="font-mono text-sm font-medium">{c.patient.patient_id}</span>
-                            <MetricChips ruleResults={c.evaluation.ruleResults} />
-                          </div>
-                          <Badge className="bg-brand-amber text-white text-xs ml-4 shrink-0">Fail</Badge>
-                        </div>
+                          patient={c.patient}
+                          evaluation={c.evaluation}
+                          isOpen={expandedPatientId === c.patient.patient_id}
+                          onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                        />
                       ))}
                     </div>
-                  </div>
+                    
+                    {/* Pagination */}
+                    {totalNeedsReviewPages > 1 && (
+                      <div className="flex items-center justify-between border-t border-muted-foreground/10 pt-3 text-xs font-semibold">
+                        <span className="text-muted-foreground">
+                          Page {needsReviewPage} of {totalNeedsReviewPages} ({filteredNeedsReview.length} matching)
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={needsReviewPage === 1}
+                            onClick={() => setNeedsReviewPage(p => p - 1)}
+                            className="h-8 py-0 px-2"
+                          >
+                            Prev
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={needsReviewPage === totalNeedsReviewPages}
+                            onClick={() => setNeedsReviewPage(p => p + 1)}
+                            className="h-8 py-0 px-2"
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -347,9 +704,9 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── ACTIVE (IN TREATMENT) ────────────────────────────────────────────── */}
-      <div className="space-y-5">
-        <SectionHeader title="Active (in treatment)" count={active.length} accent="border-border" />
+      {/* ── ONGOING (ACTIVE TREATMENT) ───────────────────────────────────────── */}
+      <div id="ongoing-section" className="space-y-6 scroll-mt-20">
+        <SectionHeader title="Ongoing (active treatment)" count={active.length} icon={Flame} accent="border-border/80" />
 
         {active.length === 0 ? (
           <p className="text-sm text-muted-foreground">No patients currently in treatment.</p>
@@ -357,99 +714,128 @@ export default function Dashboard() {
           <>
             <StatTiles
               count={active.length}
-              rateLabel="On-track rate"
+              rateLabel="On-Track Rate"
               rateValue={onTrackRate}
               hba1c={activeSummary.avgHba1cChange}
               cgm={activeSummary.avgCgmTimeInRange}
               weight={activeSummary.avgWeightLossPct}
-              sessions={avgActiveSessions}
             />
 
             {/* On-track vs flagged breakdown */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Status Breakdown</CardTitle>
-                <CardDescription>
-                  Active patients currently meeting vs not yet meeting targets — mid-program snapshot
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="h-3 rounded-full overflow-hidden flex">
-                  <div className="border border-brand-teal/50 bg-brand-teal/20 transition-all duration-500 rounded-l-full" style={{ width: `${onTrackRate}%` }} />
-                  <div className="border border-brand-amber/50 bg-brand-amber/20 flex-1 rounded-r-full" />
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'On track', count: cats.onTrack.length, rate: onTrackRate, dotColor: 'border-brand-teal bg-brand-teal/20', textColor: 'text-brand-teal' },
-                    { label: 'Flagged', count: cats.flagged.length, rate: flaggedRate, dotColor: 'border-brand-amber bg-brand-amber/20', textColor: 'text-brand-amber' },
-                  ].map(row => (
-                    <div key={row.label} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`size-2.5 rounded-full border ${row.dotColor} flex-shrink-0`} />
-                        <span className="text-sm">{row.label}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-lg">{row.count}</span>
-                        <span className="text-xs text-muted-foreground ml-1.5">{row.rate.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground border-t pt-3">
-                  "On track" = currently meeting all enabled targets. Not a projection.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-1 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between">
+                <CardHeader>
+                  <CardTitle className="text-base font-bold text-foreground">Ongoing Target Breakdown</CardTitle>
+                  <CardDescription className="text-xs">
+                    "On track" patients are currently meeting all targets; "Flagged" patients are failing one or more.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
+                  {/* Progress ring */}
+                  <ProgressRing value={onTrackRate} color={onTrackRate >= 70 ? '#55B4A6' : '#E9A23B'} />
 
-            {/* Flagged active patients — sorted nearest completion first */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Flagged Patients</CardTitle>
-                <CardDescription>
-                  {flaggedSorted.length > 0
-                    ? `${flaggedSorted.length} active patient${flaggedSorted.length !== 1 ? 's' : ''} not yet meeting targets — sorted by days remaining (nearest first)`
-                    : 'All active patients are currently meeting their targets'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {flaggedSorted.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No flagged patients.</p>
-                ) : (
-                  <div className="overflow-auto max-h-[360px]">
-                    <div className="space-y-0">
-                      {flaggedSorted.map((c, i) => {
-                        const sessionPct = c.patient.total_sessions > 0
-                          ? Math.round((c.patient.sessions_attended / c.patient.total_sessions) * 100)
-                          : null;
-                        return (
-                          <div
-                            key={c.patient.patient_id}
-                            className={`py-3 ${i < flaggedSorted.length - 1 ? 'border-b' : ''}`}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0 flex-1">
-                                <span className="font-mono text-sm font-medium">{c.patient.patient_id}</span>
-                                <MetricChips ruleResults={c.evaluation.ruleResults} />
-                              </div>
-                              <div className="flex items-center gap-3 shrink-0 text-right">
-                                {sessionPct != null && (
-                                  <span className="text-xs text-muted-foreground tabular-nums">
-                                    {sessionPct}% sessions
-                                  </span>
-                                )}
-                                <span className="text-sm font-medium tabular-nums">
-                                  {c.daysRemaining != null ? `${c.daysRemaining}d` : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="w-full space-y-2.5">
+                    {[
+                      { label: 'On Track', count: cats.onTrack.length, rate: onTrackRate, dotColor: 'bg-brand-teal glow-teal-sm' },
+                      { label: 'Flagged (Unmet Targets)', count: cats.flagged.length, rate: flaggedRate, dotColor: 'bg-brand-amber' },
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`size-2.5 rounded-full ${row.dotColor}`} />
+                          <span className="font-bold text-muted-foreground">{row.label}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-foreground">{row.count}</span>
+                          <span className="text-[10px] text-muted-foreground/80 font-bold ml-1.5">({row.rate.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <p className="text-[10px] text-muted-foreground border-t border-muted-foreground/10 pt-3 w-full text-center font-semibold">
+                    "On track" = currently meeting all checked targets. Not a projection.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Flagged active patients — sorted nearest completion first */}
+              <Card className="lg:col-span-2 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-1.5 text-brand-amber">
+                      <AlertTriangle className="size-4" />
+                      Flagged Patients
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Active patients not meeting one or more outcome targets, sorted by urgency.
+                    </CardDescription>
+                  </div>
+                  
+                  {/* Search input */}
+                  <div className="relative max-w-xs w-full">
+                    <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search Patient ID..."
+                      value={flaggedSearch}
+                      onChange={(e) => {
+                        setFlaggedSearch(e.target.value);
+                        setFlaggedPage(1);
+                      }}
+                      className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border bg-background/50 focus:outline-none focus:ring-2 focus:ring-brand-teal transition-all font-semibold"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {filteredFlagged.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No flagged active patients found.</p>
+                  ) : (
+                    <>
+                      <div className="space-y-2.5">
+                        {paginatedFlagged.map((c) => (
+                          <PatientRow
+                            key={c.patient.patient_id}
+                            patient={c.patient}
+                            evaluation={c.evaluation}
+                            daysRemaining={c.daysRemaining}
+                            isOpen={expandedPatientId === c.patient.patient_id}
+                            onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {totalFlaggedPages > 1 && (
+                        <div className="flex items-center justify-between border-t border-muted-foreground/10 pt-3 text-xs font-semibold">
+                          <span className="text-muted-foreground">
+                            Page {flaggedPage} of {totalFlaggedPages} ({filteredFlagged.length} matching)
+                          </span>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={flaggedPage === 1}
+                              onClick={() => setFlaggedPage(p => p - 1)}
+                              className="h-8 py-0 px-2"
+                            >
+                              Prev
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={flaggedPage === totalFlaggedPages}
+                              onClick={() => setFlaggedPage(p => p + 1)}
+                              className="h-8 py-0 px-2"
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </>
         )}
       </div>

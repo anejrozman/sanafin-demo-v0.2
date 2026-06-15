@@ -13,7 +13,7 @@ export interface OutcomeRule {
   id: string;                          // stable key, e.g. "hba1c_reduction"
   label: string;                       // display name, e.g. "HbA1c Reduction"
   metric: string;                      // metric key this rule evaluates (see above)
-  operator: '>=' | '<=' | '>' | '<';
+  operator: '>=' | '<=' | '>' | '<' | '=';
   value: number;                       // configurable target threshold
   unit: string;                        // e.g. "points", "%"
   enabled: boolean;                    // toggled on/off in the config tab later

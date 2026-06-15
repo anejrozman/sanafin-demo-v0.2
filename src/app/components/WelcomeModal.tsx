@@ -1,14 +1,15 @@
 import { useState, Fragment } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { ArrowRight, Database, ShieldCheck, Banknote } from 'lucide-react';
 import sanafinLogo from '../../assets/sanafin_logo.png';
 
 interface WelcomePageProps {
   open: boolean;
-  onStartUpload: () => void;
-  onGoToUpload: () => void;
-  onGoToDashboard: () => void;
+  onClose: () => void;
+  onStartUpload: (workflow: string) => void;
+  onGoToUpload: (workflow: string) => void;
+  onGoToDashboard: (workflow: string) => void;
 }
 
 const steps = [
@@ -38,51 +39,87 @@ const steps = [
   },
 ];
 
-export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToDashboard }: WelcomePageProps) {
+export default function WelcomePage({
+  open,
+  onClose,
+  onStartUpload,
+  onGoToUpload,
+  onGoToDashboard,
+}: WelcomePageProps) {
+  const [workflow, setWorkflow] = useState('metabolic');
+
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-          className="fixed inset-0 z-50 flex flex-col bg-background"
-        >
+    <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
+      <DialogContent className="max-w-3xl sm:max-w-3xl p-6 sm:rounded-xl glass-panel shadow-2xl bg-background/95 border-foreground/5 overflow-hidden bg-dot-grid">
+        <div className="flex flex-col gap-6 relative z-10">
           {/* Header */}
-          <div className="bg-background px-16 flex-1 flex flex-row justify-center items-center gap-16 border-b border-border">
-            <img src={sanafinLogo} alt="SanaFin" className="h-50 w-auto flex-shrink-0" />
-            <div className="flex flex-col gap-4 max-w-2xl text-left">
-              <p className="text-foreground leading-relaxed text-xl">
+          <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-foreground/5">
+            <img src={sanafinLogo} alt="SanaFin" className="h-16 w-auto flex-shrink-0 transition-transform hover:scale-105 duration-300" />
+            <div className="flex flex-col gap-1 flex-1 text-center sm:text-left">
+              <DialogTitle className="text-xl font-black tracking-tight text-foreground">Outcome-based Contract Verification</DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm leading-relaxed mt-1 font-semibold">
                 SanaFin turns patient data into contract-ready evidence for outcome-based contracts.
-                It automates verifying, and reporting results for payers and healthcare providers.
-              </p>
-              <p className="text-foreground leading-relaxed text-xl">
-                The demo focuses on outcome verification and reporting for type 2 diabetes treatment, demonstrating how trusted
-                evidence becomes the foundation for outcome-based contracts.
-              </p>
+                It automates verifying and reporting results for payers and healthcare providers.
+              </DialogDescription>
             </div>
           </div>
 
+          {/* Intro Text */}
+          <div className="text-sm text-foreground/80 leading-relaxed text-center sm:text-left font-medium">
+            <p>
+              The demo focuses on outcome verification and reporting for type 2 diabetes treatment, demonstrating how trusted
+              evidence becomes the foundation for outcome-based contracts.
+            </p>
+          </div>
+
+          {/* Dropdown for Clinical Workflow */}
+          <div className="flex flex-col gap-2 max-w-sm mx-auto w-full text-left bg-muted/40 p-4 rounded-xl border border-foreground/5 shadow-inner glass-panel">
+            <label htmlFor="clinical-workflow" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              Clinical Workflow Template
+            </label>
+            <select
+              id="clinical-workflow"
+              value={workflow}
+              onChange={(e) => {
+                const val = e.target.value;
+                setWorkflow(val);
+                if (val === 'cardiovascular') {
+                  alert("Cardiovascular Health template is coming soon. Using Metabolic Health (Demo) for this session.");
+                  setWorkflow('metabolic');
+                }
+              }}
+              className="w-full rounded-md border border-input-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal font-semibold transition-all"
+            >
+              <option value="metabolic">Metabolic Health (Demo)</option>
+              <option value="cardiovascular">Cardiovascular Health (Coming Soon)</option>
+              <option value="manual">Manual Workflow (Custom Targets)</option>
+            </select>
+            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+              {workflow === 'manual' 
+                ? '💡 Manual selection will prompt target configuration right away.' 
+                : '💡 Auto-loads default outcome targets for diabetes prevention.'}
+            </p>
+          </div>
+
           {/* Three-step diagram */}
-          <div className="px-8 py-10 flex flex-col items-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+          <div className="flex flex-col items-center py-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
               How it works
             </p>
-            <div className="flex items-stretch gap-2 w-full max-w-2xl">
+            <div className="flex items-stretch gap-2.5 w-full max-w-2xl">
               {steps.map((step, i) => {
                 const Icon = step.icon;
                 return (
                   <Fragment key={step.label}>
-                    <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border ${step.borderColor} ${step.bg} p-6`}>
-                      <div className={`size-14 rounded-full ${step.color} flex items-center justify-center`}>
-                        <Icon className="size-7 text-white" />
+                    <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border border-foreground/5 p-4 bg-background/60 shadow-xs hover-glass-card glass-panel`}>
+                      <div className={`size-11 rounded-full ${step.color} flex items-center justify-center text-white glow-teal-sm`}>
+                        <Icon className="size-5" />
                       </div>
-                      <span className={`text-sm font-semibold ${step.textColor} text-center`}>{step.label}</span>
+                      <span className={`text-xs font-bold text-foreground text-center`}>{step.label}</span>
                     </div>
                     {i < steps.length - 1 && (
                       <div className="flex items-center">
-                        <ArrowRight className="size-6 text-muted-foreground flex-shrink-0" />
+                        <ArrowRight className="size-4 text-muted-foreground/60 flex-shrink-0" />
                       </div>
                     )}
                   </Fragment>
@@ -90,40 +127,38 @@ export default function WelcomePage({ open, onStartUpload, onGoToUpload, onGoToD
               })}
             </div>
 
-            <div className="mt-6 space-y-2 text-base text-muted-foreground w-full max-w-2xl">
+            <div className="mt-6 space-y-2.5 text-xs text-muted-foreground w-full max-w-2xl font-semibold">
               <div className="flex gap-2">
-                <span className="font-medium text-foreground">1.</span>
+                <span className="font-bold text-brand-teal">1.</span>
                 <span>Upload a CSV of patient data or use a sample dataset.</span>
               </div>
               <div className="flex gap-2">
-                <span className="font-medium text-foreground">2.</span>
+                <span className="font-bold text-brand-teal">2.</span>
                 <span>SanaFin verifies each patient against your contract's clinical thresholds.</span>
               </div>
               <div className="flex gap-2">
-                <span className="font-medium text-foreground">3.</span>
+                <span className="font-bold text-brand-teal">3.</span>
                 <span>A dashboard provides insights into the treatment performance of the cohort.</span>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-8 flex gap-3 pb-16 justify-center">
-            <Button size="lg" onClick={onStartUpload}>
-              Start with a sample upload
-              <ArrowRight className="size-4 ml-2" />
-            </Button>
-            <Button size="lg" onClick={onGoToUpload}>
-              Upload your own patient data
-              <ArrowRight className="size-4 ml-2" />
-            </Button>
-            <Button size="lg" onClick={onGoToDashboard}>
+          {/* Footer actions */}
+          <div className="flex flex-wrap gap-3 mt-4 justify-end border-t border-foreground/5 pt-4">
+            <Button variant="ghost" className="font-bold hover:bg-muted" onClick={() => onGoToDashboard(workflow)}>
               Go to Dashboard
+            </Button>
+            <Button variant="secondary" className="font-bold" onClick={() => onGoToUpload(workflow)}>
+              Upload patient data
+            </Button>
+            <Button className="font-bold bg-brand-teal hover:bg-brand-teal/90 glow-teal-sm text-white px-5 py-2.5 rounded-lg transition-all" onClick={() => onStartUpload(workflow)}>
+              Start with sample data
               <ArrowRight className="size-4 ml-2" />
             </Button>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
