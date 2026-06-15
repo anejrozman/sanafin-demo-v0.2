@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { Loader2, Info, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame } from 'lucide-react';
+import { Loader2, Info, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame, ShieldAlert, DollarSign, Wallet, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -11,6 +11,7 @@ import {
   getCohortSummary, getRulePerformance, getEnrollmentSpan,
   getAsOfDate, partitionByStatus,
   classifyCohort, getByCategory, getFlaggedSorted,
+  type ClassifiedPatient,
 } from '../../lib/selectors';
 import { type PatientRecord } from '../../lib/schema';
 
@@ -263,16 +264,39 @@ function PatientRow({
           </div>
           <div>
             <span className="font-bold text-sm block text-foreground">Patient {patient.patient_id}</span>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-wider py-0.5 px-2 rounded-md ${
-                isFailed ? 'border-brand-amber/35 text-brand-amber bg-brand-amber/5' : 'border-brand-teal/35 text-brand-teal bg-brand-teal/5'
-              }`}>
-                {isFailed ? 'Unmet Goals' : 'Goal Achieved'}
-              </Badge>
-              {daysRemaining != null && (
-                <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                  <Calendar className="size-3" />
-                  {daysRemaining}d left
+            <div className="flex flex-col gap-1.5 mt-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-wider py-0.5 px-2 rounded-md ${
+                  isFailed ? 'border-brand-amber/35 text-brand-amber bg-brand-amber/5' : 'border-brand-teal/35 text-brand-teal bg-brand-teal/5'
+                }`}>
+                  {isFailed ? 'Unmet Goals' : 'Goal Achieved'}
+                </Badge>
+                {daysRemaining != null && (
+                  <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                    <Calendar className="size-3" />
+                    {daysRemaining}d left
+                  </span>
+                )}
+              </div>
+              
+              {/* Financial Exposure Placement (Left Column to avoid right details overflow) */}
+              {isFailed ? (
+                <span className="w-fit inline-flex items-center gap-1 bg-brand-amber/10 border border-brand-amber/35 text-brand-amber text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                  <ShieldAlert className="size-3 shrink-0" />
+                  <span>
+                    {daysRemaining != null 
+                      ? `CHF 800 pending clawback in ${daysRemaining}d` 
+                      : `Escrow Clawback: CHF 800`}
+                  </span>
+                </span>
+              ) : (
+                <span className="w-fit inline-flex items-center gap-1 bg-brand-teal/10 border border-brand-teal/35 text-brand-teal text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                  <CheckCircle2 className="size-3 shrink-0 text-brand-teal" />
+                  <span>
+                    {daysRemaining != null 
+                      ? `CHF 800 Escrow Secure` 
+                      : `Escrow Released: CHF 800`}
+                  </span>
                 </span>
               )}
             </div>
@@ -382,6 +406,308 @@ function PatientRow({
   );
 }
 
+const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
+  {
+    patient: {
+      patient_id: "SF-COMP-089",
+      enrollment_date: "2025-06-01",
+      end_date: "2026-06-01",
+      last_measurement_date: "2026-06-01",
+      baseline_hba1c: 8.2,
+      latest_hba1c: 7.9,
+      cgm_time_in_range: 62.5,
+      baseline_weight_kg: 95.0,
+      latest_weight_kg: 94.0,
+      sessions_attended: 18,
+      total_sessions: 24
+    },
+    category: "fail",
+    daysRemaining: null,
+    unmetTargetLabels: ["HbA1c Reduction", "CGM Time-in-Range", "Weight Loss"],
+    targetGaps: [
+      { label: "HbA1c Reduction", gap: 0.2, unit: "pp" },
+      { label: "CGM Time-in-Range", gap: 7.5, unit: "%" },
+      { label: "Weight Loss", gap: 3.95, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-COMP-089",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.3,
+        cgm_time_in_range: 62.5,
+        weight_loss_pct: 1.05
+      },
+      patient: {
+        patient_id: "SF-COMP-089",
+        enrollment_date: "2025-06-01",
+        end_date: "2026-06-01",
+        last_measurement_date: "2026-06-01",
+        baseline_hba1c: 8.2,
+        latest_hba1c: 7.9,
+        cgm_time_in_range: 62.5,
+        baseline_weight_kg: 95.0,
+        latest_weight_kg: 94.0,
+        sessions_attended: 18,
+        total_sessions: 24
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 62.5, target: 70.0, operator: ">=", unit: "%", passed: false },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 1.05, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  },
+  {
+    patient: {
+      patient_id: "SF-COMP-142",
+      enrollment_date: "2025-05-15",
+      end_date: "2026-05-15",
+      last_measurement_date: "2026-05-15",
+      baseline_hba1c: 7.8,
+      latest_hba1c: 7.1,
+      cgm_time_in_range: 68.1,
+      baseline_weight_kg: 110.0,
+      latest_weight_kg: 108.5,
+      sessions_attended: 22,
+      total_sessions: 24
+    },
+    category: "fail",
+    daysRemaining: null,
+    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
+    targetGaps: [
+      { label: "CGM Time-in-Range", gap: 1.9, unit: "%" },
+      { label: "Weight Loss", gap: 3.64, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-COMP-142",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.7,
+        cgm_time_in_range: 68.1,
+        weight_loss_pct: 1.36
+      },
+      patient: {
+        patient_id: "SF-COMP-142",
+        enrollment_date: "2025-05-15",
+        end_date: "2026-05-15",
+        last_measurement_date: "2026-05-15",
+        baseline_hba1c: 7.8,
+        latest_hba1c: 7.1,
+        cgm_time_in_range: 68.1,
+        baseline_weight_kg: 110.0,
+        latest_weight_kg: 108.5,
+        sessions_attended: 22,
+        total_sessions: 24
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.7, target: 0.5, operator: ">=", unit: "pp", passed: true },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 68.1, target: 70.0, operator: ">=", unit: "%", passed: false },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 1.36, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  },
+  {
+    patient: {
+      patient_id: "SF-COMP-203",
+      enrollment_date: "2025-05-20",
+      end_date: "2026-05-20",
+      last_measurement_date: "2026-05-20",
+      baseline_hba1c: 9.1,
+      latest_hba1c: 8.8,
+      cgm_time_in_range: 72.0,
+      baseline_weight_kg: 88.0,
+      latest_weight_kg: 87.2,
+      sessions_attended: 14,
+      total_sessions: 24
+    },
+    category: "fail",
+    daysRemaining: null,
+    unmetTargetLabels: ["HbA1c Reduction", "Weight Loss"],
+    targetGaps: [
+      { label: "HbA1c Reduction", gap: 0.2, unit: "pp" },
+      { label: "Weight Loss", gap: 4.1, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-COMP-203",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.3,
+        cgm_time_in_range: 72.0,
+        weight_loss_pct: 0.91
+      },
+      patient: {
+        patient_id: "SF-COMP-203",
+        enrollment_date: "2025-05-20",
+        end_date: "2026-05-20",
+        last_measurement_date: "2026-05-20",
+        baseline_hba1c: 9.1,
+        latest_hba1c: 8.8,
+        cgm_time_in_range: 72.0,
+        baseline_weight_kg: 88.0,
+        latest_weight_kg: 87.2,
+        sessions_attended: 14,
+        total_sessions: 24
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 72.0, target: 70.0, operator: ">=", unit: "%", passed: true },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.91, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  }
+];
+
+const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
+  {
+    patient: {
+      patient_id: "SF-ACT-402",
+      enrollment_date: "2025-09-01",
+      end_date: "2026-08-31",
+      last_measurement_date: "2026-06-15",
+      baseline_hba1c: 8.5,
+      latest_hba1c: 8.3,
+      cgm_time_in_range: 64.2,
+      baseline_weight_kg: 102.0,
+      latest_weight_kg: 101.5,
+      sessions_attended: 15,
+      total_sessions: 20
+    },
+    category: "flagged",
+    daysRemaining: 76,
+    unmetTargetLabels: ["HbA1c Reduction", "CGM Time-in-Range", "Weight Loss"],
+    targetGaps: [
+      { label: "HbA1c Reduction", gap: 0.3, unit: "pp" },
+      { label: "CGM Time-in-Range", gap: 5.8, unit: "%" },
+      { label: "Weight Loss", gap: 4.51, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-ACT-402",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.2,
+        cgm_time_in_range: 64.2,
+        weight_loss_pct: 0.49
+      },
+      patient: {
+        patient_id: "SF-ACT-402",
+        enrollment_date: "2025-09-01",
+        end_date: "2026-08-31",
+        last_measurement_date: "2026-06-15",
+        baseline_hba1c: 8.5,
+        latest_hba1c: 8.3,
+        cgm_time_in_range: 64.2,
+        baseline_weight_kg: 102.0,
+        latest_weight_kg: 101.5,
+        sessions_attended: 15,
+        total_sessions: 20
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.2, target: 0.5, operator: ">=", unit: "pp", passed: false },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 64.2, target: 70.0, operator: ">=", unit: "%", passed: false },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.49, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  },
+  {
+    patient: {
+      patient_id: "SF-ACT-511",
+      enrollment_date: "2025-10-10",
+      end_date: "2026-10-09",
+      last_measurement_date: "2026-06-15",
+      baseline_hba1c: 7.6,
+      latest_hba1c: 7.5,
+      cgm_time_in_range: 61.8,
+      baseline_weight_kg: 94.0,
+      latest_weight_kg: 93.2,
+      sessions_attended: 12,
+      total_sessions: 18
+    },
+    category: "flagged",
+    daysRemaining: 116,
+    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
+    targetGaps: [
+      { label: "CGM Time-in-Range", gap: 8.2, unit: "%" },
+      { label: "Weight Loss", gap: 4.15, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-ACT-511",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.1,
+        cgm_time_in_range: 61.8,
+        weight_loss_pct: 0.85
+      },
+      patient: {
+        patient_id: "SF-ACT-511",
+        enrollment_date: "2025-10-10",
+        end_date: "2026-10-09",
+        last_measurement_date: "2026-06-15",
+        baseline_hba1c: 7.6,
+        latest_hba1c: 7.5,
+        cgm_time_in_range: 61.8,
+        baseline_weight_kg: 94.0,
+        latest_weight_kg: 93.2,
+        sessions_attended: 12,
+        total_sessions: 18
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.1, target: 0.5, operator: ">=", unit: "pp", passed: false },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 61.8, target: 70.0, operator: ">=", unit: "%", passed: false },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.85, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  },
+  {
+    patient: {
+      patient_id: "SF-ACT-620",
+      enrollment_date: "2025-07-01",
+      end_date: "2026-06-30",
+      last_measurement_date: "2026-06-15",
+      baseline_hba1c: 8.9,
+      latest_hba1c: 8.6,
+      cgm_time_in_range: 64.2,
+      baseline_weight_kg: 85.0,
+      latest_weight_kg: 84.5,
+      sessions_attended: 20,
+      total_sessions: 22
+    },
+    category: "flagged",
+    daysRemaining: 14,
+    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
+    targetGaps: [
+      { label: "CGM Time-in-Range", gap: 5.8, unit: "%" },
+      { label: "Weight Loss", gap: 4.41, unit: "%" }
+    ],
+    evaluation: {
+      patientId: "SF-ACT-620",
+      passed: false,
+      metrics: {
+        hba1c_change: 0.3,
+        cgm_time_in_range: 64.2,
+        weight_loss_pct: 0.59
+      },
+      patient: {
+        patient_id: "SF-ACT-620",
+        enrollment_date: "2025-07-01",
+        end_date: "2026-06-30",
+        last_measurement_date: "2026-06-15",
+        baseline_hba1c: 8.9,
+        latest_hba1c: 8.6,
+        cgm_time_in_range: 64.2,
+        baseline_weight_kg: 85.0,
+        latest_weight_kg: 84.5,
+        sessions_attended: 20,
+        total_sessions: 22
+      },
+      ruleResults: [
+        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
+        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 64.2, target: 70.0, operator: ">=", unit: "%", passed: false },
+        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.59, target: 5.0, operator: ">=", unit: "%", passed: false }
+      ]
+    }
+  }
+];
+
 export default function Dashboard() {
   const { patients, thresholds, dataSource, isLoading, processed } = useData();
 
@@ -420,15 +746,17 @@ export default function Dashboard() {
   const onTrackRate = active.length > 0 ? (cats.onTrack.length / active.length) * 100 : 0;
   const flaggedRate = 100 - onTrackRate;
 
-  // Search filter and paginations
-  const filteredNeedsReview = cats.fail.filter(c => 
-    c.patient.patient_id.toLowerCase().includes(needsReviewSearch.toLowerCase())
+  // Search filter and paginations mapping to mock arrays
+  const filteredNeedsReview = MOCK_NEEDS_REVIEW.filter(c => 
+    c.patient.patient_id.toLowerCase().includes(needsReviewSearch.toLowerCase()) ||
+    c.unmetTargetLabels.some(label => label.toLowerCase().includes(needsReviewSearch.toLowerCase()))
   );
   const totalNeedsReviewPages = Math.ceil(filteredNeedsReview.length / 5) || 1;
   const paginatedNeedsReview = filteredNeedsReview.slice((needsReviewPage - 1) * 5, needsReviewPage * 5);
 
-  const filteredFlagged = flaggedSorted.filter(c => 
-    c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase())
+  const filteredFlagged = MOCK_ACTIVE_CAPITAL_AT_RISK.filter(c => 
+    c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase()) ||
+    c.unmetTargetLabels.some(label => label.toLowerCase().includes(flaggedSearch.toLowerCase()))
   );
   const totalFlaggedPages = Math.ceil(filteredFlagged.length / 5) || 1;
   const paginatedFlagged = filteredFlagged.slice((flaggedPage - 1) * 5, flaggedPage * 5);
@@ -454,6 +782,59 @@ export default function Dashboard() {
         </Badge>
       </div>
 
+      {/* Contract & Escrow Metrics Banner (Fintech Layer) */}
+      <div className="bg-background/80 border border-brand-teal/40 rounded-2xl p-6 shadow-md relative overflow-hidden group glass-panel">
+        <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+          <ShieldAlert className="size-36 text-brand-teal" />
+        </div>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 z-10 relative">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="size-2.5 rounded-full bg-brand-teal animate-pulse" />
+              <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">
+                Contract & Escrow Metrics
+              </h2>
+            </div>
+            <p className="text-2xl font-black tracking-tight text-foreground">
+              Smart Contract Settlement Infrastructure
+            </p>
+            <p className="text-xs text-muted-foreground max-w-xl font-medium mt-1">
+              Risk-sharing payment protocols linking digital biomarkers directly to smart contract settlement triggers. Automated audits verified dynamically.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 divide-y sm:divide-y-0 sm:divide-x divide-muted-foreground/15">
+            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-4 first:pl-0">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Total Escrow Volume</span>
+              <span className="text-2xl font-black text-foreground mt-1 block tracking-tight">
+                CHF 200,000
+              </span>
+              <span className="text-[9px] text-brand-amber font-extrabold uppercase tracking-wider mt-0.5 block">
+                Volume under Risk
+              </span>
+            </div>
+            
+            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-6">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Escrow Split</span>
+              <span className="text-2xl font-black text-foreground mt-1 block tracking-tight">
+                60% / 40%
+              </span>
+              <span className="text-[9px] text-muted-foreground font-bold mt-0.5 block">
+                Base Payment / Performance (CHF 80,000 at risk)
+              </span>
+            </div>
+            
+            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-6">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Smart Contract State</span>
+              <span className="inline-flex items-center gap-1.5 mt-2 bg-brand-amber/10 border border-brand-amber/35 text-brand-amber text-[10px] font-black tracking-wider px-2.5 py-1 rounded-md uppercase w-fit">
+                <span className="size-1.5 rounded-full bg-brand-amber animate-pulse" />
+                Active / Pending Settlement Audit
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Dynamic Results Summary Banner (Ongoing vs Completion) */}
       <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
@@ -462,25 +843,25 @@ export default function Dashboard() {
         <div className="space-y-1 z-10">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Activity className="size-5 text-brand-teal animate-pulse" />
-            Active Cohort Audit Summary
+            Active EDEN Contract Verification Summary
           </h2>
           <p className="text-xs text-muted-foreground">
-            Current outcome audit and contract validation for {patients.length} total participants in {dataSource === 'uploaded' ? 'uploaded cohort' : 'sample template'}.
+            Real-world evidence capture and smart contract audit for {patients.length} total participants under the EDEN framework.
           </p>
         </div>
         <div className="flex flex-wrap gap-4 md:gap-8 z-10">
           <div className="border-l-4 border-brand-teal pl-4 py-0.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Completion (Completed)</span>
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Settle (Completed)</span>
             <span className="text-base font-bold mt-1 block">
-              <span className="text-brand-teal">{summary.passed} Pass</span>
+              <span className="text-brand-teal">{summary.passed} Verified Payouts</span>
               <span className="text-muted-foreground/50 mx-1.5">/</span>
-              <span className="text-brand-amber">{summary.failed} Fail</span>
+              <span className="text-brand-amber">{summary.failed} Forfeited</span>
             </span>
           </div>
           <div className="border-l-4 border-indigo-400 pl-4 py-0.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Ongoing (Active)</span>
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Verify (Active)</span>
             <span className="text-base font-bold mt-1 block">
-              <span className="text-brand-teal">{cats.onTrack.length} On track</span>
+              <span className="text-brand-teal">{cats.onTrack.length} On Track</span>
               <span className="text-muted-foreground/50 mx-1.5">/</span>
               <span className="text-brand-amber">{cats.flagged.length} Flagged</span>
             </span>
@@ -510,12 +891,17 @@ export default function Dashboard() {
               <Card className="lg:col-span-2 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Goal Success Rates</CardTitle>
-                  <CardDescription className="text-xs">
-                    Share of completed patients meeting each threshold
+                  <CardDescription className="text-xs space-y-2">
+                    <div>Share of completed patients meeting each threshold.</div>
                     {rulePerf.length > 0 && (
-                      <span className="ml-2 font-semibold text-brand-amber bg-brand-amber/10 px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider glow-amber-md">
-                        Bottleneck: {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label}
-                      </span>
+                      <div className="flex flex-col gap-1.5 mt-2">
+                        <span className="w-fit font-bold text-brand-amber bg-brand-amber/10 px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider glow-amber-md">
+                          Primary Performance Risk Driver: {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label} Underperformance
+                        </span>
+                        <p className="text-[10px] text-muted-foreground italic font-semibold">
+                          Note: Underperformance in clinical benchmarks directly triggers the financial forfeiture of the performance escrow.
+                        </p>
+                      </div>
                     )}
                   </CardDescription>
                 </CardHeader>
@@ -583,31 +969,53 @@ export default function Dashboard() {
 
               <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between">
                 <CardHeader>
-                  <CardTitle className="text-base font-bold text-foreground">Outcome Breakdown</CardTitle>
+                  <CardTitle className="text-base font-bold text-foreground">Settlement Audit: Verified Payout vs Forfeited Capital</CardTitle>
                   <CardDescription className="text-xs">
-                    Pass vs Fail across {enabledRules.length} targets
+                    Pass vs Fail across {enabledRules.length} targets mapping to escrow release conditions.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
                   {/* Glowing progress ring */}
                   <ProgressRing value={summary.passRate} color={summary.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
                   
-                  <div className="w-full space-y-2.5">
-                    {[
-                      { label: 'Pass (Goals Met)', count: summary.passed, rate: summary.passRate, color: 'bg-brand-teal glow-teal-sm' },
-                      { label: 'Fail (Goals Unmet)', count: summary.failed, rate: failRate, color: 'bg-brand-amber' },
-                    ].map(row => (
-                      <div key={row.label} className="flex items-center justify-between text-sm">
+                  <div className="w-full space-y-4">
+                    <div className="flex flex-col gap-1 border-b border-muted-foreground/5 pb-3">
+                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div className={`size-2.5 rounded-full ${row.color}`} />
-                          <span className="font-bold text-muted-foreground">{row.label}</span>
+                          <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
+                          <span className="font-bold text-foreground">Verified Payout (Goals Met)</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-black text-foreground">{row.count}</span>
-                          <span className="text-[10px] text-muted-foreground/80 font-bold ml-1.5">({row.rate.toFixed(1)}%)</span>
+                          <span className="font-black text-foreground">{summary.passed} Patients</span>
+                          <span className="text-[10px] text-brand-teal font-bold ml-1.5">({summary.passRate.toFixed(1)}%)</span>
                         </div>
                       </div>
-                    ))}
+                      <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
+                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                        <span className="font-black text-xs block text-foreground">
+                          ➔ Release: CHF {(summary.passed * 800).toLocaleString()} to Provider
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="size-2.5 rounded-full bg-brand-amber" />
+                          <span className="font-bold text-foreground">Forfeited Capital (Goals Unmet)</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-foreground">{summary.failed} Patients</span>
+                          <span className="text-[10px] text-brand-amber font-bold ml-1.5">({failRate.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                        <span className="font-black text-xs block text-foreground">
+                          ➔ Clawback: CHF {(summary.failed * 800).toLocaleString()} to Insurers
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <div className="border-t border-muted-foreground/10 pt-3 w-full text-center">
                     <p className="text-[10px] text-muted-foreground font-semibold">
@@ -727,29 +1135,42 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Ongoing Target Breakdown</CardTitle>
                   <CardDescription className="text-xs">
-                    "On track" patients are currently meeting all targets; "Flagged" patients are failing one or more.
+                    "On track" patients are currently meeting all targets; "Flagged" patients represent capital at risk.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
                   {/* Progress ring */}
                   <ProgressRing value={onTrackRate} color={onTrackRate >= 70 ? '#55B4A6' : '#E9A23B'} />
 
-                  <div className="w-full space-y-2.5">
-                    {[
-                      { label: 'On Track', count: cats.onTrack.length, rate: onTrackRate, dotColor: 'bg-brand-teal glow-teal-sm' },
-                      { label: 'Flagged (Unmet Targets)', count: cats.flagged.length, rate: flaggedRate, dotColor: 'bg-brand-amber' },
-                    ].map(row => (
-                      <div key={row.label} className="flex items-center justify-between text-sm">
+                  <div className="w-full space-y-4">
+                    <div className="flex items-center justify-between text-sm border-b border-muted-foreground/5 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
+                        <span className="font-bold text-foreground">On Track (Low Risk)</span>
+                      </div>
+                      <div className="text-right font-black">
+                        {cats.onTrack.length} <span className="text-[10px] text-muted-foreground">({onTrackRate.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div className={`size-2.5 rounded-full ${row.dotColor}`} />
-                          <span className="font-bold text-muted-foreground">{row.label}</span>
+                          <div className="size-2.5 rounded-full bg-brand-amber" />
+                          <span className="font-bold text-foreground">Flagged (Capital at Risk)</span>
                         </div>
-                        <div className="text-right">
-                          <span className="font-black text-foreground">{row.count}</span>
-                          <span className="text-[10px] text-muted-foreground/80 font-bold ml-1.5">({row.rate.toFixed(1)}%)</span>
+                        <div className="text-right font-black">
+                          {cats.flagged.length} <span className="text-[10px] text-brand-amber">({flaggedRate.toFixed(1)}%)</span>
                         </div>
                       </div>
-                    ))}
+                      <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Escrow Risk Summary</span>
+                        <span className="block">{cats.flagged.length} Patients Off-Track</span>
+                        <span className="block text-xs mt-0.5 text-foreground font-black">
+                          ➔ CHF {(cats.flagged.length * 800).toLocaleString()} at Risk
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-[10px] text-muted-foreground border-t border-muted-foreground/10 pt-3 w-full text-center font-semibold">
                     "On track" = currently meeting all checked targets. Not a projection.
@@ -762,11 +1183,11 @@ export default function Dashboard() {
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-1.5 text-brand-amber">
-                      <AlertTriangle className="size-4" />
-                      Flagged Patients
+                      <ShieldAlert className="size-4 animate-pulse" />
+                      Active Capital at Risk (Value-at-Risk Framework)
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Active patients not meeting one or more outcome targets, sorted by urgency.
+                      Active patients not meeting one or more outcome targets, sorted by Value-at-Risk (CHF 800 at risk per patient).
                     </CardDescription>
                   </div>
                   

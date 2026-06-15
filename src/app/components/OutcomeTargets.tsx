@@ -61,9 +61,9 @@ export default function OutcomeTargets() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground">Outcome Targets</h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">EDEN Contract Targets</h1>
           <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-            Define the clinical goals each participant should meet.
+            Define the clinical verification thresholds for the smart contract.
           </p>
         </div>
         <AutosaveIndicator status={saveStatus} justNow={justNow} />
@@ -72,7 +72,7 @@ export default function OutcomeTargets() {
       <div className="flex items-start gap-2.5 rounded-xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-xs font-semibold text-brand-teal/90 shadow-xs glass-panel">
         <Info className="size-4 mt-0.5 shrink-0 text-brand-teal glow-teal-sm" />
         <span>
-          A participant must meet all checked goals in the Pass Policy checklist below to count as a verified successful outcome. Unchecked goals will be ignored in the final count.
+          A participant must meet all checked goals in the EDEN checklist below to verify the outcome and release the associated performance escrow. Unchecked goals will not be audited.
         </span>
       </div>
 
@@ -98,9 +98,9 @@ export default function OutcomeTargets() {
       {/* Clinical goals configuration */}
       <div className="space-y-3">
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/80">Configure Goal Parameters</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/80">Configure EDEN Target Thresholds</h2>
           <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-            Set the clinical logic and thresholds for each available target.
+            Set the actuarial logic and evidence thresholds for automated escrow settlement.
           </p>
         </div>
 

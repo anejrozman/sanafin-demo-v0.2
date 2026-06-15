@@ -15,7 +15,7 @@ interface WelcomePageProps {
 const steps = [
   {
     icon: Database,
-    label: 'Data Injection',
+    label: 'Capture Outcomes',
     color: 'bg-brand-teal',
     textColor: 'text-brand-teal',
     borderColor: 'border-brand-teal/30',
@@ -23,7 +23,7 @@ const steps = [
   },
   {
     icon: ShieldCheck,
-    label: 'Verification',
+    label: 'Prove Impact',
     color: 'bg-brand-amber',
     textColor: 'text-brand-amber',
     borderColor: 'border-brand-amber/30',
@@ -31,7 +31,7 @@ const steps = [
   },
   {
     icon: Banknote,
-    label: 'Payout',
+    label: 'Automate Settlement',
     color: 'bg-brand-teal',
     textColor: 'text-brand-teal',
     borderColor: 'border-brand-teal/30',
@@ -56,10 +56,9 @@ export default function WelcomePage({
           <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-foreground/5">
             <img src={sanafinLogo} alt="SanaFin" className="h-16 w-auto flex-shrink-0 transition-transform hover:scale-105 duration-300" />
             <div className="flex flex-col gap-1 flex-1 text-center sm:text-left">
-              <DialogTitle className="text-xl font-black tracking-tight text-foreground">Outcome-based Contract Verification</DialogTitle>
+              <DialogTitle className="text-xl font-black tracking-tight text-foreground">Sanafin EDEN Framework Outcome Studio</DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm leading-relaxed mt-1 font-semibold">
-                SanaFin turns patient data into contract-ready evidence for outcome-based contracts.
-                It automates verifying and reporting results for payers and healthcare providers.
+                Sanafin connects health data, outcome verification, and automated settlement into one trusted workflow based on the EDEN Framework.
               </DialogDescription>
             </div>
           </div>
@@ -130,15 +129,15 @@ export default function WelcomePage({
             <div className="mt-6 space-y-2.5 text-xs text-muted-foreground w-full max-w-2xl font-semibold">
               <div className="flex gap-2">
                 <span className="font-bold text-brand-teal">1.</span>
-                <span>Upload a CSV of patient data or use a sample dataset.</span>
+                <span>Capture: Connect telemetry clinical data (smart scales, CGM, medication sync).</span>
               </div>
               <div className="flex gap-2">
                 <span className="font-bold text-brand-teal">2.</span>
-                <span>SanaFin verifies each patient against your contract's clinical thresholds.</span>
+                <span>Verify: Prove impact by checking patient compliance against EDEN verification rules.</span>
               </div>
               <div className="flex gap-2">
                 <span className="font-bold text-brand-teal">3.</span>
-                <span>A dashboard provides insights into the treatment performance of the cohort.</span>
+                <span>Settle: Trigger automated escrow payouts or clawbacks based on smart contract settlement triggers.</span>
               </div>
             </div>
           </div>

@@ -148,9 +148,9 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
         {/* Left Column: Text and Actions */}
         <div className="lg:col-span-4 space-y-4">
           <div className="space-y-1">
-            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Data Ingestion</h1>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Capture Outcomes</h1>
             <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
-              Upload participant cohort data to verify clinical outcomes against targets.
+              Connect clinical evidence from labs, EHRs, or Smart Scales to verify outcomes under the EDEN framework.
             </p>
           </div>
 
@@ -206,12 +206,12 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
                         {processing ? (
                           <>
                             <Loader2 className="size-3.5 mr-1.5 animate-spin" />
-                            Ingesting…
+                            Capturing Outcomes…
                           </>
                         ) : (
                           <>
                             <FileText className="size-3.5 mr-1.5" />
-                            Ingest Sample Cohort
+                            Capture Sample Cohort
                           </>
                         )}
                       </Button>
@@ -261,7 +261,7 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
                                 Processing…
                               </>
                             ) : (
-                              'Process Ingestion'
+                              'Process Ingested Evidence'
                             )}
                           </Button>
                         </div>
@@ -294,7 +294,7 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
               <div className="space-y-1">
                 <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <CheckCircle className="size-3.5 text-brand-teal glow-teal-sm animate-pulse" />
-                  Ingestion Pipeline Active
+                  Evidence Capture Pipeline Active
                 </h2>
                 <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5">
                   <span className="font-mono text-[9px] bg-muted/65 border border-foreground/5 rounded px-1.5 py-0.5 text-foreground font-semibold">
@@ -319,7 +319,7 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
                   onClick={handleClearAndReset}
                   className="font-bold text-[11px] h-7 rounded-md cursor-pointer px-2.5"
                 >
-                  New Ingestion
+                  New Evidence Capture
                 </Button>
               </div>
             </div>

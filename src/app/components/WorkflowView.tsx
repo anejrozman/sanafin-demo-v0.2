@@ -142,9 +142,9 @@ function WorkflowNode({
       {isDone && (
         <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground/60 font-bold pl-0.5 hover:text-brand-teal transition-colors">
           <span>{
-            id === 'injection' ? 'New Ingestion' :
-            id === 'verification' ? 'Define Logic' :
-            'Breakdown'
+            id === 'injection' ? 'View Evidence' :
+            id === 'verification' ? 'Verify Targets' :
+            'Audit Escrow'
           }</span>
           <ChevronRight className="size-2.5" />
         </div>
@@ -428,36 +428,36 @@ function ReportingDrawer({ classified }: { classified: ClassifiedPatient[] }) {
   return (
     <div className="space-y-6">
       <MetricTable
-        title="Passed — completed treatment"
+        title="Verified Payouts (Escrow Released)"
         titleColor="text-brand-teal"
         rows={cats.pass}
         showDaysRemaining={false}
         showUnmet={false}
-        emptyMsg="No patients completed treatment with passing outcomes."
+        emptyMsg="No patients completed treatment with verified outcomes."
       />
       <MetricTable
-        title="Failed — completed treatment"
+        title="Forfeited Capital (Escrow Clawbacked)"
         titleColor="text-brand-amber"
         rows={cats.fail}
         showDaysRemaining={false}
         showUnmet={true}
-        emptyMsg="No patients completed treatment without meeting targets."
+        emptyMsg="No patients completed treatment with forfeited capital."
       />
       <MetricTable
-        title="On track — in treatment, currently meeting targets"
+        title="On Track Assets (Secure Escrow)"
         titleColor="text-brand-teal"
         rows={cats.onTrack}
         showDaysRemaining={true}
         showUnmet={false}
-        emptyMsg="No active patients currently meeting all targets."
+        emptyMsg="No active patients currently on track."
       />
       <MetricTable
-        title="Flagged — in treatment, not yet meeting targets"
+        title="Flagged Assets (Value-at-Risk Framework)"
         titleColor="text-brand-amber"
         rows={flaggedSorted}
         showDaysRemaining={true}
         showUnmet={true}
-        emptyMsg="No active patients with unmet targets."
+        emptyMsg="No active assets currently flagged under risk."
       />
     </div>
   );
@@ -537,28 +537,28 @@ export default function WorkflowView({
     {
       id: 'injection',
       icon: Database,
-      label: 'Data Injection',
+      label: 'Capture Outcomes',
       color: { ring: 'border-blue-500/20 shadow-blue-500/5', bg: 'bg-blue-500/10', icon: 'text-blue-500', text: 'text-blue-500' },
       summary: (
         <div className="text-[10px] text-muted-foreground font-semibold">
-          <span>CSV · {patients.length} patients</span>
+          <span>Connect Evidence · {patients.length} patients</span>
         </div>
       ),
     },
     {
       id: 'verification',
       icon: ShieldCheck,
-      label: 'Verification',
+      label: 'Prove Impact',
       color: { ring: 'border-violet-500/20 shadow-violet-500/5', bg: 'bg-violet-500/10', icon: 'text-violet-500', text: 'text-violet-500' },
       summary: (
         <div className="space-y-0.5 text-[10px] text-muted-foreground font-semibold leading-tight">
           <p>
-            <span className="text-brand-teal font-bold">{cats.pass.length} Pass</span> ·{' '}
-            <span className="text-brand-amber font-bold">{cats.fail.length} Fail</span>
+            <span className="text-brand-teal font-bold">{cats.pass.length} Payouts</span> ·{' '}
+            <span className="text-brand-amber font-bold">{cats.fail.length} Forfeited</span>
           </p>
           <p>
             <span className="text-brand-teal font-bold">{cats.onTrack.length} Track</span> ·{' '}
-            <span className="text-brand-amber font-bold">{cats.flagged.length} Flag</span>
+            <span className="text-brand-amber font-bold">{cats.flagged.length} Risk</span>
           </p>
         </div>
       ),
@@ -566,12 +566,12 @@ export default function WorkflowView({
     {
       id: 'reporting',
       icon: FileText,
-      label: 'Reporting',
+      label: 'Automate Settlement',
       color: { ring: 'border-emerald-500/20 shadow-emerald-500/5', bg: 'bg-emerald-500/10', icon: 'text-emerald-500', text: 'text-emerald-500' },
       summary: (
         <div className="text-[10px] text-muted-foreground font-semibold leading-tight">
-          <p>Reports generated</p>
-          <p className="text-[9px] text-brand-teal font-bold mt-0.5">Ready to audit</p>
+          <p>Settle Programmatically</p>
+          <p className="text-[9px] text-brand-teal font-bold mt-0.5">Escrow Settlements Ready</p>
         </div>
       ),
     },
@@ -611,9 +611,9 @@ export default function WorkflowView({
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <Database className="size-5 text-blue-600" />
-              Data Injection
+              Capture Outcomes
             </SheetTitle>
-            <SheetDescription>Ingested records and detected schema</SheetDescription>
+            <SheetDescription>Smart contract schema and connected clinical evidence logs</SheetDescription>
           </SheetHeader>
           <InjectionDrawer filename={filename} patients={patients} />
         </SheetContent>
@@ -624,9 +624,9 @@ export default function WorkflowView({
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-violet-600" />
-              Verification
+              Prove Impact
             </SheetTitle>
-            <SheetDescription>Clinical rule gates and per-patient verdicts</SheetDescription>
+            <SheetDescription>Actuarial verification check against smart contract rules</SheetDescription>
           </SheetHeader>
           <VerificationDrawer classified={classified} thresholds={thresholds} />
         </SheetContent>
@@ -637,9 +637,9 @@ export default function WorkflowView({
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <FileText className="size-5 text-emerald-600" />
-              Reporting
+              Automate Settlement
             </SheetTitle>
-            <SheetDescription>Outcome evidence across all four patient categories</SheetDescription>
+            <SheetDescription>Actuarial evidence logs and settlement allocations</SheetDescription>
           </SheetHeader>
           <ReportingDrawer classified={classified} />
         </SheetContent>

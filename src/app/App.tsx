@@ -52,7 +52,7 @@ function AppHeader({
 
           <Button variant="outline" size="sm" onClick={onConfigureTargets} className="gap-1.5">
             <SlidersHorizontal className="size-4" />
-            Configure Targets
+            Configure EDEN Targets
           </Button>
 
 
@@ -135,7 +135,7 @@ function AppSidebar() {
                 >
                   <div className="flex items-center gap-3 w-full font-bold text-xs">
                     <Upload className="text-brand-teal size-4 shrink-0" />
-                    <span>Data Ingestion</span>
+                    <span>Capture Outcomes</span>
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -194,7 +194,7 @@ function AppSidebar() {
       {!isCollapsed && (
         <SidebarFooter className="px-5 py-4 bg-muted/10">
           <p className="text-xs text-muted-foreground font-semibold">Sanafin Outcome Studio</p>
-          <p className="text-[10px] text-muted-foreground/75">Version 0.2</p>
+          <p className="text-[10px] text-muted-foreground/75">Version 0.3</p>
         </SidebarFooter>
       )}
     </Sidebar>
