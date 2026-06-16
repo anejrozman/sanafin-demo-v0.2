@@ -60,7 +60,7 @@ export default function WelcomePage({
 
           {/* Intro text */}
           <p className="text-sm text-foreground/80 leading-relaxed font-medium text-center sm:text-left">
-            The demo focuses on guiding the user through the clinical workflow of managing a cohort of patients undergoing treatment and showcases how settlement for their care is handled through SanaFin.
+            The demo focuses on guiding the user through the clinical workflow of managing a cohort of patients undergoing treatment and showcases how settlement of outcome based contracts is handled through SanaFin.
           </p>
 
           {/* Dropdown for Clinical Workflow */}

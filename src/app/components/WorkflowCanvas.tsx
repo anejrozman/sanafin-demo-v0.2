@@ -21,7 +21,7 @@ function MiniWorkflowBar({
 }) {
   return (
     // top-16 sits below AppHeader (h-16 = 4rem) so they don't overlap
-    <div className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-5">
+    <div data-mini-bar className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-5">
       <div className="flex items-center gap-3 flex-wrap justify-center">
         {STEPS.map((step, i) => {
           const Icon = step.Icon;
@@ -34,9 +34,14 @@ function MiniWorkflowBar({
                 <div className={`size-9 rounded-full ${step.color} flex items-center justify-center text-white flex-shrink-0`}>
                   <Icon className="size-4.5" />
                 </div>
-                <span className="text-sm font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight max-w-[150px]">
-                  {step.label}
-                </span>
+                <div className="flex flex-col min-w-0 max-w-[160px]">
+                  <span className="text-sm font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight">
+                    {step.label}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium leading-snug truncate">
+                    {step.description}
+                  </span>
+                </div>
                 {completedUpTo >= i && (
                   <Check className="size-3.5 text-emerald-500 flex-shrink-0" />
                 )}
@@ -679,7 +684,7 @@ export default function WorkflowCanvas() {
         >
           {/* Sticky bar sits at top-16 so it stacks below AppHeader (top-0 z-40) */}
           <MiniWorkflowBar completedUpTo={completedUpTo} onNodeClick={goBackToNode} />
-          <div id="overview-section" className="max-w-7xl mx-auto p-8">
+          <div className="max-w-7xl mx-auto p-8">
             <Dashboard />
           </div>
         </motion.div>

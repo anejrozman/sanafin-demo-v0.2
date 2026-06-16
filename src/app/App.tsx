@@ -58,10 +58,17 @@ const DASHBOARD_SECTIONS = [
 
 const HEADER_H = 64;
 
-function scrollToId(id: string) {
+function getScrollOffset(includeMiniBar = false) {
+  if (!includeMiniBar) return HEADER_H;
+  const bar = document.querySelector('[data-mini-bar]');
+  return HEADER_H + (bar ? bar.getBoundingClientRect().height : 0);
+}
+
+function scrollToId(id: string, includeMiniBar = false) {
   const el = document.getElementById(id);
   if (!el) return;
-  window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - HEADER_H), behavior: 'smooth' });
+  const offset = getScrollOffset(includeMiniBar);
+  window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset), behavior: 'smooth' });
 }
 
 function AppSidebar() {
@@ -91,9 +98,9 @@ function AppSidebar() {
     if (workflowView !== 'dashboard') {
       // Switch back to dashboard (view-only navigation), then scroll after render
       setWorkflowView('dashboard');
-      setTimeout(() => scrollToId(id), 200);
+      setTimeout(() => scrollToId(id, true), 250);
     } else {
-      scrollToId(id);
+      scrollToId(id, true);
     }
   }
 

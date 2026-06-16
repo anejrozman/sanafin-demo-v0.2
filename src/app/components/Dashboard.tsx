@@ -157,12 +157,12 @@ function GoalMetricCard({ label, passRate, isPrimary }: { label: string; passRat
 
 function SectionHeader({ title, count, icon: Icon, accent }: { title: string; count: number; icon?: React.ElementType; accent: string }) {
   return (
-    <div className={`flex items-center justify-between pb-3 border-b border-border/80 ${accent}`}>
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="size-5 text-muted-foreground" />}
-        <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/80">{title}</h2>
+    <div className={`flex items-center justify-between pb-4 border-b-2 border-border/60 ${accent}`}>
+      <div className="flex items-center gap-3">
+        {Icon && <Icon className="size-6 text-muted-foreground" />}
+        <h2 className="text-3xl font-black tracking-tight text-foreground">{title}</h2>
       </div>
-      <Badge variant="outline" className="tabular-nums bg-background/50 font-bold px-2 py-0.5 rounded-full text-xs">
+      <Badge variant="outline" className="tabular-nums bg-background/50 font-bold px-3 py-1 rounded-full text-sm">
         {count} Patients
       </Badge>
     </div>
@@ -912,11 +912,13 @@ export default function Dashboard() {
   function scrollToId(id: string) {
     const el = document.getElementById(id);
     if (!el) return;
-    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 64), behavior: 'smooth' });
+    const bar = document.querySelector('[data-mini-bar]');
+    const offset = 64 + (bar ? bar.getBoundingClientRect().height : 0);
+    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset), behavior: 'smooth' });
   }
 
   return (
-    <div id="overview-section" className="space-y-10 scroll-mt-20">
+    <div id="overview-section" className="space-y-10 scroll-mt-48">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
@@ -1096,7 +1098,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── COMPLETED ────────────────────────────────────────────────────────── */}
-      <div id="completion-section" className="space-y-6 scroll-mt-20 pt-10 mt-4">
+      <div id="completion-section" className="space-y-6 scroll-mt-48 pt-10 mt-4">
         <div className="h-px bg-gradient-to-r from-brand-teal/50 via-brand-teal/15 to-transparent mb-2" />
         <SectionHeader title="Completed" count={completed.length} icon={CheckCircle2} accent="border-brand-teal" />
 
@@ -1287,7 +1289,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── ONGOING ──────────────────────────────────────────────────────────── */}
-      <div id="ongoing-section" className="space-y-6 scroll-mt-20 pt-10 mt-4">
+      <div id="ongoing-section" className="space-y-6 scroll-mt-48 pt-10 mt-4">
         <div className="h-px bg-gradient-to-r from-brand-amber/50 via-brand-amber/15 to-transparent mb-2" />
         <SectionHeader title="Ongoing" count={active.length} icon={Activity} accent="border-brand-amber" />
 
