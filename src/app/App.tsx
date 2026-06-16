@@ -236,11 +236,6 @@ function AppShell() {
     checkManualWorkflow(workflow);
   };
 
-  const handleGoToDashboard = (workflow: string) => {
-    close();
-    checkManualWorkflow(workflow);
-  };
-
   const handleChangeCohort = () => {
     reopen();
   };
@@ -292,7 +287,6 @@ function AppShell() {
         onClose={close}
         onStartUpload={handleStartSample}
         onGoToUpload={handleGoToUpload}
-        onGoToDashboard={handleGoToDashboard}
       />
 
       <Dialog open={targetsOpen} onOpenChange={setTargetsOpen}>

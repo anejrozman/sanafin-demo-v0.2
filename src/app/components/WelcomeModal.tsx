@@ -9,7 +9,6 @@ interface WelcomePageProps {
   onClose: () => void;
   onStartUpload: (workflow: string) => void;
   onGoToUpload: (workflow: string) => void;
-  onGoToDashboard: (workflow: string) => void;
 }
 
 const steps = [
@@ -44,14 +43,14 @@ export default function WelcomePage({
   onClose,
   onStartUpload,
   onGoToUpload,
-  onGoToDashboard,
 }: WelcomePageProps) {
   const [workflow, setWorkflow] = useState('metabolic');
+  const actionsDisabled = workflow !== 'metabolic';
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
-      <DialogContent className="max-w-3xl sm:max-w-3xl p-6 sm:rounded-xl glass-panel shadow-2xl bg-background/95 border-foreground/5 overflow-hidden bg-dot-grid">
-        <div className="flex flex-col gap-6 relative z-10">
+      <DialogContent className="max-w-6xl sm:max-w-6xl w-[90vw] min-h-[85vh] p-10 sm:rounded-xl glass-panel shadow-2xl bg-background/95 border-foreground/5 overflow-hidden bg-dot-grid">
+        <div className="flex flex-col gap-6 relative z-10 h-full min-h-[calc(85vh-5rem)]">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-foreground/5">
             <img src={sanafinLogo} alt="SanaFin" className="h-16 w-auto flex-shrink-0 transition-transform hover:scale-105 duration-300" />
@@ -63,13 +62,10 @@ export default function WelcomePage({
             </div>
           </div>
 
-          {/* Intro Text */}
-          <div className="text-sm text-foreground/80 leading-relaxed text-center sm:text-left font-medium">
-            <p>
-              The demo focuses on outcome verification and reporting for type 2 diabetes treatment, demonstrating how trusted
-              evidence becomes the foundation for outcome-based contracts.
-            </p>
-          </div>
+          {/* Intro text */}
+          <p className="text-sm text-foreground/80 leading-relaxed font-medium text-center sm:text-left">
+            The demo focuses on guiding the user through the clinical workflow of managing a cohort of patients undergoing treatment and showcases how settlement for their care is handled through SanaFin.
+          </p>
 
           {/* Dropdown for Clinical Workflow */}
           <div className="flex flex-col gap-2 max-w-sm mx-auto w-full text-left bg-muted/40 p-4 rounded-xl border border-foreground/5 shadow-inner glass-panel">
@@ -79,14 +75,7 @@ export default function WelcomePage({
             <select
               id="clinical-workflow"
               value={workflow}
-              onChange={(e) => {
-                const val = e.target.value;
-                setWorkflow(val);
-                if (val === 'cardiovascular') {
-                  alert("Cardiovascular Health template is coming soon. Using Metabolic Health (Demo) for this session.");
-                  setWorkflow('metabolic');
-                }
-              }}
+              onChange={(e) => setWorkflow(e.target.value)}
               className="w-full rounded-md border border-input-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal font-semibold transition-all"
             >
               <option value="metabolic">Metabolic Health (Demo)</option>
@@ -94,63 +83,85 @@ export default function WelcomePage({
               <option value="manual">Manual Workflow (Custom Targets)</option>
             </select>
             <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-              {workflow === 'manual' 
-                ? '💡 Manual selection will prompt target configuration right away.' 
-                : '💡 Auto-loads default outcome targets for diabetes prevention.'}
+              {workflow === 'manual'
+                ? 'Manual selection will prompt target configuration right away.'
+                : 'Auto-loads default outcome targets for diabetes prevention.'}
             </p>
           </div>
 
-          {/* Three-step diagram */}
-          <div className="flex flex-col items-center py-2">
+          {/* Clinical Workflow section */}
+          <div className="flex flex-col items-center py-2 flex-1">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-              How it works
+              Clinical Workflow
             </p>
-            <div className="flex items-stretch gap-2.5 w-full max-w-2xl">
-              {steps.map((step, i) => {
-                const Icon = step.icon;
-                return (
-                  <Fragment key={step.label}>
-                    <div className={`flex-1 flex flex-col items-center gap-3 rounded-xl border border-foreground/5 p-4 bg-background/60 shadow-xs hover-glass-card glass-panel`}>
-                      <div className={`size-11 rounded-full ${step.color} flex items-center justify-center text-white glow-teal-sm`}>
-                        <Icon className="size-5" />
-                      </div>
-                      <span className={`text-xs font-bold text-foreground text-center`}>{step.label}</span>
-                    </div>
-                    {i < steps.length - 1 && (
-                      <div className="flex items-center">
-                        <ArrowRight className="size-4 text-muted-foreground/60 flex-shrink-0" />
-                      </div>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </div>
 
-            <div className="mt-6 space-y-2.5 text-xs text-muted-foreground w-full max-w-2xl font-semibold">
-              <div className="flex gap-2">
-                <span className="font-bold text-brand-teal">1.</span>
-                <span>Capture: Connect telemetry clinical data (smart scales, CGM, medication sync).</span>
+            {workflow === 'metabolic' && (
+              <>
+                <div className="flex items-stretch gap-2.5 w-full max-w-2xl">
+                  {steps.map((step, i) => {
+                    const Icon = step.icon;
+                    return (
+                      <Fragment key={step.label}>
+                        <div className="flex-1 flex flex-col items-center gap-3 rounded-xl border border-foreground/5 p-4 bg-background/60 shadow-xs hover-glass-card glass-panel">
+                          <div className={`size-11 rounded-full ${step.color} flex items-center justify-center text-white glow-teal-sm`}>
+                            <Icon className="size-5" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground text-center">{step.label}</span>
+                        </div>
+                        {i < steps.length - 1 && (
+                          <div className="flex items-center">
+                            <ArrowRight className="size-4 text-muted-foreground/60 flex-shrink-0" />
+                          </div>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </div>
+                <div className="mt-6 space-y-2.5 text-xs text-muted-foreground w-full max-w-2xl font-semibold">
+                  <div className="flex gap-2">
+                    <span className="font-bold text-brand-teal">1.</span>
+                    <span>Capture: Connect telemetry clinical data (smart scales, CGM, medication sync).</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold text-brand-teal">2.</span>
+                    <span>Verify: Prove impact by checking patient compliance against EDEN verification rules.</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold text-brand-teal">3.</span>
+                    <span>Settle: Trigger automated escrow payouts or clawbacks based on smart contract settlement triggers.</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {workflow === 'cardiovascular' && (
+              <div className="flex items-center justify-center w-full max-w-2xl flex-1 rounded-xl border border-foreground/5 bg-background/60 glass-panel">
+                <p className="text-sm font-semibold text-muted-foreground">Cardiovascular health template coming soon.</p>
               </div>
-              <div className="flex gap-2">
-                <span className="font-bold text-brand-teal">2.</span>
-                <span>Verify: Prove impact by checking patient compliance against EDEN verification rules.</span>
+            )}
+
+            {workflow === 'manual' && (
+              <div className="flex items-center justify-center w-full max-w-2xl flex-1 rounded-xl border border-foreground/5 bg-background/60 glass-panel">
+                <p className="text-sm font-semibold text-muted-foreground">Manual workflow tools coming soon.</p>
               </div>
-              <div className="flex gap-2">
-                <span className="font-bold text-brand-teal">3.</span>
-                <span>Settle: Trigger automated escrow payouts or clawbacks based on smart contract settlement triggers.</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Footer actions */}
-          <div className="flex flex-wrap gap-3 mt-4 justify-end border-t border-foreground/5 pt-4">
-            <Button variant="ghost" className="font-bold hover:bg-muted" onClick={() => onGoToDashboard(workflow)}>
-              Go to Dashboard
-            </Button>
-            <Button variant="secondary" className="font-bold" onClick={() => onGoToUpload(workflow)}>
+          <div className="flex flex-wrap gap-3 mt-4 justify-center border-t border-foreground/5 pt-4">
+            <Button
+              variant="secondary"
+              className="font-bold"
+              disabled={actionsDisabled}
+              onClick={() => onGoToUpload(workflow)}
+            >
               Upload patient data
             </Button>
-            <Button className="font-bold bg-brand-teal hover:bg-brand-teal/90 glow-teal-sm text-white px-5 py-2.5 rounded-lg transition-all" onClick={() => onStartUpload(workflow)}>
+            <Button
+              className="font-bold bg-brand-teal hover:bg-brand-teal/90 glow-teal-sm text-white px-5 py-2.5 rounded-lg transition-all"
+              disabled={actionsDisabled}
+              onClick={() => onStartUpload(workflow)}
+            >
               Start with sample data
               <ArrowRight className="size-4 ml-2" />
             </Button>
