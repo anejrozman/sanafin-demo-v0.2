@@ -20,38 +20,51 @@ function MiniWorkflowBar({
   onNodeClick: (i: number) => void;
 }) {
   return (
-    // top-16 sits below AppHeader (h-16 = 4rem) so they don't overlap
-    <div data-mini-bar className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-5">
-      <div className="flex items-center gap-3 flex-wrap justify-center">
-        {STEPS.map((step, i) => {
-          const Icon = step.Icon;
-          return (
-            <Fragment key={step.id}>
-              <button
-                onClick={() => onNodeClick(i)}
-                className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-foreground/5 bg-background/60 hover:bg-background hover:shadow-md transition-all cursor-pointer group"
-              >
-                <div className={`size-9 rounded-full ${step.color} flex items-center justify-center text-white flex-shrink-0`}>
-                  <Icon className="size-4.5" />
-                </div>
-                <div className="flex flex-col min-w-0 max-w-[160px]">
-                  <span className="text-sm font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight">
-                    {step.label}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-medium leading-snug truncate">
-                    {step.description}
-                  </span>
-                </div>
-                {completedUpTo >= i && (
-                  <Check className="size-3.5 text-emerald-500 flex-shrink-0" />
+    // sticky top-16 sits flush below AppHeader (h-16). overflow:clip on <main>
+    // (not overflow:hidden) ensures sticky works relative to the viewport.
+    <div data-mini-bar className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-4">
+      <div className="flex flex-col gap-3">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase tracking-widest text-foreground/80">
+            Workflow Configuration
+          </span>
+          <span className="text-xs text-muted-foreground font-medium">
+            · Click any step to go back and reconfigure it
+          </span>
+        </div>
+        {/* Step nodes */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {STEPS.map((step, i) => {
+            const Icon = step.Icon;
+            return (
+              <Fragment key={step.id}>
+                <button
+                  onClick={() => onNodeClick(i)}
+                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-foreground/5 bg-background/60 hover:bg-background hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className={`size-9 rounded-full ${step.color} flex items-center justify-center text-white flex-shrink-0`}>
+                    <Icon className="size-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0 max-w-[160px]">
+                    <span className="text-sm font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight">
+                      {step.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-medium leading-snug truncate">
+                      {step.description}
+                    </span>
+                  </div>
+                  {completedUpTo >= i && (
+                    <Check className="size-3.5 text-emerald-500 flex-shrink-0" />
+                  )}
+                </button>
+                {i < STEPS.length - 1 && (
+                  <ArrowRight className="size-4 text-muted-foreground/40 flex-shrink-0" />
                 )}
-              </button>
-              {i < STEPS.length - 1 && (
-                <ArrowRight className="size-4 text-muted-foreground/40 flex-shrink-0" />
-              )}
-            </Fragment>
-          );
-        })}
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -677,17 +690,21 @@ export default function WorkflowCanvas() {
 
       {/* ── Dashboard view: outcome reporting + mini reconfigure bar ── */}
       {view === 'dashboard' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Sticky bar sits at top-16 so it stacks below AppHeader (top-0 z-40) */}
+        <>
+          {/* Sticky bar sits at top-16 so it stacks below AppHeader (top-0 z-40).
+              Kept outside the motion.div so CSS transforms from the fade-in animation
+              don't break position:sticky (transforms create a new stacking context). */}
           <MiniWorkflowBar completedUpTo={completedUpTo} onNodeClick={goBackToNode} />
-          <div className="max-w-7xl mx-auto p-8">
-            <Dashboard />
-          </div>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="max-w-7xl mx-auto p-8">
+              <Dashboard />
+            </div>
+          </motion.div>
+        </>
       )}
 
       {/* ── Modals (rendered regardless of active view) ── */}

@@ -250,7 +250,9 @@
 /* Ambient backgrounds */
 .ambient-bg-glow {
   position: relative;
-  overflow: hidden;
+  /* overflow:clip clips the ambient gradient pseudo-elements without creating a
+     scroll container — overflow:hidden would break position:sticky in children */
+  overflow: clip;
 }
 .ambient-bg-glow::before {
   content: '';

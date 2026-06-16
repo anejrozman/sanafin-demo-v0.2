@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Loader2, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame, ShieldAlert, LayoutDashboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
 import { useData } from '../../store/DataContext';
 import {
   getCohortSummary, getRulePerformance,
@@ -227,9 +226,9 @@ function StatTiles({
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       {tiles.map(t => (
-        <div 
-          key={t.label} 
-          className="rounded-xl border border-foreground/5 bg-background/50 hover:bg-background/80 hover:shadow-lg hover:border-brand-teal/30 transition-all duration-300 p-4 flex flex-col justify-between group glass-panel"
+        <div
+          key={t.label}
+          className="rounded-xl border border-foreground/5 bg-background/50 hover:bg-background/80 hover:shadow-lg hover:border-brand-teal/30 transition-all duration-300 p-4 flex flex-col justify-between group glass-panel overflow-hidden"
         >
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest group-hover:text-primary transition-colors">{t.label}</p>
@@ -284,7 +283,7 @@ function PatientRow({
             {patient.patient_id}
           </div>
           <div>
-            <span className="font-bold text-sm block text-foreground">Patient {patient.patient_id}</span>
+            <span className="font-bold text-sm block text-foreground">{patient.patient_id}</span>
             <div className="flex flex-col gap-1.5 mt-1.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-wider py-0.5 px-2 rounded-md ${
@@ -430,7 +429,7 @@ function PatientRow({
 const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
   {
     patient: {
-      patient_id: "SF-COMP-089",
+      patient_id: "P001",
       enrollment_date: "2025-06-01",
       end_date: "2026-06-01",
       last_measurement_date: "2026-06-01",
@@ -451,7 +450,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 3.95, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-COMP-089",
+      patientId: "P001",
       passed: false,
       metrics: {
         hba1c_change: 0.3,
@@ -459,7 +458,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
         weight_loss_pct: 1.05
       },
       patient: {
-        patient_id: "SF-COMP-089",
+        patient_id: "P001",
         enrollment_date: "2025-06-01",
         end_date: "2026-06-01",
         last_measurement_date: "2026-06-01",
@@ -480,7 +479,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
   },
   {
     patient: {
-      patient_id: "SF-COMP-142",
+      patient_id: "P002",
       enrollment_date: "2025-05-15",
       end_date: "2026-05-15",
       last_measurement_date: "2026-05-15",
@@ -500,7 +499,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 3.64, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-COMP-142",
+      patientId: "P002",
       passed: false,
       metrics: {
         hba1c_change: 0.7,
@@ -508,7 +507,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
         weight_loss_pct: 1.36
       },
       patient: {
-        patient_id: "SF-COMP-142",
+        patient_id: "P002",
         enrollment_date: "2025-05-15",
         end_date: "2026-05-15",
         last_measurement_date: "2026-05-15",
@@ -529,7 +528,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
   },
   {
     patient: {
-      patient_id: "SF-COMP-203",
+      patient_id: "P003",
       enrollment_date: "2025-05-20",
       end_date: "2026-05-20",
       last_measurement_date: "2026-05-20",
@@ -549,7 +548,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 4.1, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-COMP-203",
+      patientId: "P003",
       passed: false,
       metrics: {
         hba1c_change: 0.3,
@@ -557,7 +556,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
         weight_loss_pct: 0.91
       },
       patient: {
-        patient_id: "SF-COMP-203",
+        patient_id: "P003",
         enrollment_date: "2025-05-20",
         end_date: "2026-05-20",
         last_measurement_date: "2026-05-20",
@@ -581,7 +580,7 @@ const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
 const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
   {
     patient: {
-      patient_id: "SF-ACT-402",
+      patient_id: "P004",
       enrollment_date: "2025-09-01",
       end_date: "2026-08-31",
       last_measurement_date: "2026-06-15",
@@ -602,7 +601,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 4.51, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-ACT-402",
+      patientId: "P004",
       passed: false,
       metrics: {
         hba1c_change: 0.2,
@@ -610,7 +609,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
         weight_loss_pct: 0.49
       },
       patient: {
-        patient_id: "SF-ACT-402",
+        patient_id: "P004",
         enrollment_date: "2025-09-01",
         end_date: "2026-08-31",
         last_measurement_date: "2026-06-15",
@@ -631,7 +630,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
   },
   {
     patient: {
-      patient_id: "SF-ACT-511",
+      patient_id: "P005",
       enrollment_date: "2025-10-10",
       end_date: "2026-10-09",
       last_measurement_date: "2026-06-15",
@@ -651,7 +650,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 4.15, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-ACT-511",
+      patientId: "P005",
       passed: false,
       metrics: {
         hba1c_change: 0.1,
@@ -659,7 +658,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
         weight_loss_pct: 0.85
       },
       patient: {
-        patient_id: "SF-ACT-511",
+        patient_id: "P005",
         enrollment_date: "2025-10-10",
         end_date: "2026-10-09",
         last_measurement_date: "2026-06-15",
@@ -680,7 +679,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
   },
   {
     patient: {
-      patient_id: "SF-ACT-620",
+      patient_id: "P006",
       enrollment_date: "2025-07-01",
       end_date: "2026-06-30",
       last_measurement_date: "2026-06-15",
@@ -700,7 +699,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
       { label: "Weight Loss", gap: 4.41, unit: "%" }
     ],
     evaluation: {
-      patientId: "SF-ACT-620",
+      patientId: "P006",
       passed: false,
       metrics: {
         hba1c_change: 0.3,
@@ -708,7 +707,7 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
         weight_loss_pct: 0.59
       },
       patient: {
-        patient_id: "SF-ACT-620",
+        patient_id: "P006",
         enrollment_date: "2025-07-01",
         end_date: "2026-06-30",
         last_measurement_date: "2026-06-15",
@@ -871,11 +870,9 @@ export default function Dashboard() {
     return computeCohortFinancials(contractType, contractParams, combinedTotal, combinedPass, combinedFail);
   }, [contractType, contractParams, completed.length, summary.passed, summary.failed, cats.onTrack.length, cats.flagged.length]);
 
-  // Search & Pagination states
+  // Search states
   const [needsReviewSearch, setNeedsReviewSearch] = useState('');
-  const [needsReviewPage, setNeedsReviewPage] = useState(1);
   const [flaggedSearch, setFlaggedSearch] = useState('');
-  const [flaggedPage, setFlaggedPage] = useState(1);
   const [expandedPatientId, setExpandedPatientId] = useState<string | null>(null);
 
   if (isLoading) {
@@ -894,20 +891,16 @@ export default function Dashboard() {
   const onTrackRate = active.length > 0 ? (cats.onTrack.length / active.length) * 100 : 0;
   const flaggedRate = 100 - onTrackRate;
 
-  // Search filter and paginations mapping to mock arrays
-  const filteredNeedsReview = MOCK_NEEDS_REVIEW.filter(c => 
+  // Search filters for patient lists
+  const filteredNeedsReview = MOCK_NEEDS_REVIEW.filter(c =>
     c.patient.patient_id.toLowerCase().includes(needsReviewSearch.toLowerCase()) ||
     c.unmetTargetLabels.some(label => label.toLowerCase().includes(needsReviewSearch.toLowerCase()))
   );
-  const totalNeedsReviewPages = Math.ceil(filteredNeedsReview.length / 5) || 1;
-  const paginatedNeedsReview = filteredNeedsReview.slice((needsReviewPage - 1) * 5, needsReviewPage * 5);
 
-  const filteredFlagged = MOCK_ACTIVE_CAPITAL_AT_RISK.filter(c => 
+  const filteredFlagged = MOCK_ACTIVE_CAPITAL_AT_RISK.filter(c =>
     c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase()) ||
     c.unmetTargetLabels.some(label => label.toLowerCase().includes(flaggedSearch.toLowerCase()))
   );
-  const totalFlaggedPages = Math.ceil(filteredFlagged.length / 5) || 1;
-  const paginatedFlagged = filteredFlagged.slice((flaggedPage - 1) * 5, flaggedPage * 5);
 
   function scrollToId(id: string) {
     const el = document.getElementById(id);
@@ -939,11 +932,8 @@ export default function Dashboard() {
       <SectionHeader title="Overview" count={patients.length} icon={LayoutDashboard} accent="border-brand-teal" />
 
       {/* ── Active Contract Summary ─────────────────────────────────────────── */}
-      <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-8 shadow-md relative overflow-hidden group glass-panel">
-        <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
-          <Activity className="size-48 text-brand-teal" />
-        </div>
-        <div className="space-y-6 z-10 relative">
+      <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-8 shadow-md glass-panel">
+        <div className="space-y-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Activity className="size-5 text-brand-teal animate-pulse" />
@@ -953,41 +943,41 @@ export default function Dashboard() {
               Real-world evidence capture and smart contract audit for {patients.length} total participants.
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Completed Patients</span>
-              <span className="text-3xl font-black text-foreground">{completed.length}</span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Verified Payouts</span>
-              <span className="text-3xl font-black text-brand-teal">{summary.passed}</span>
-              <span className="text-xs text-muted-foreground font-semibold">of {completed.length} completed</span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Active Patients</span>
-              <span className="text-3xl font-black text-foreground">{active.length}</span>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Flagged / At Risk</span>
-              <span className="text-3xl font-black text-brand-amber">{cats.flagged.length}</span>
-              <span className="text-xs text-muted-foreground font-semibold">of {active.length} active</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-foreground/8">
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Completed — Settle</span>
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <span className="text-brand-teal">{summary.passed} verified</span>
-                <span className="text-muted-foreground/40">/</span>
-                <span className="text-brand-amber">{summary.failed} forfeited</span>
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Completed group */}
+            <div className="flex-1 space-y-3 md:border-r border-foreground/8 md:pr-8">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Completed Patients</span>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">Total</span>
+                  <span className="text-3xl font-black text-foreground">{completed.length}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">Verified</span>
+                  <span className="text-3xl font-black text-brand-teal">{summary.passed}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">Forfeited</span>
+                  <span className="text-3xl font-black text-brand-amber">{summary.failed}</span>
+                </div>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ongoing — Verify</span>
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <span className="text-brand-teal">{cats.onTrack.length} on track</span>
-                <span className="text-muted-foreground/40">/</span>
-                <span className="text-brand-amber">{cats.flagged.length} flagged</span>
+            {/* Active group */}
+            <div className="flex-1 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Active Patients</span>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">Total</span>
+                  <span className="text-3xl font-black text-foreground">{active.length}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">On Track</span>
+                  <span className="text-3xl font-black text-brand-teal">{cats.onTrack.length}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground/70 font-bold uppercase tracking-wider block">Flagged</span>
+                  <span className="text-3xl font-black text-brand-amber">{cats.flagged.length}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1144,57 +1134,59 @@ export default function Dashboard() {
             </div>
 
             {/* Outcome breakdown */}
-            <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between max-w-lg">
+            <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Settlement Audit: Verified Payout vs Forfeited Capital</CardTitle>
                   <CardDescription className="text-xs">
                     Pass vs Fail across {enabledRules.length} targets mapping to escrow release conditions.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
-                  {/* Glowing progress ring */}
-                  <ProgressRing value={summary.passRate} color={summary.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
-                  
-                  <div className="w-full space-y-4">
-                    <div className="flex flex-col gap-1 border-b border-muted-foreground/5 pb-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
-                          <span className="font-bold text-foreground">Verified Payout (Goals Met)</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-black text-foreground">{summary.passed} Patients</span>
-                          <span className="text-[10px] text-brand-teal font-bold ml-1.5">({summary.passRate.toFixed(1)}%)</span>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
-                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
-                        <span className="font-black text-xs block text-foreground">
-                          ➔ Release: CHF {(summary.passed * 800).toLocaleString()} to Provider
-                        </span>
-                      </div>
+                <CardContent className="pb-6">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+                    <div className="shrink-0">
+                      <ProgressRing value={summary.passRate} color={summary.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
                     </div>
-                    
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="size-2.5 rounded-full bg-brand-amber" />
-                          <span className="font-bold text-foreground">Forfeited Capital (Goals Unmet)</span>
+                    <div className="flex-1 w-full space-y-4">
+                      <div className="flex flex-col gap-1 border-b border-muted-foreground/5 pb-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
+                            <span className="font-bold text-foreground">Verified Payout (Goals Met)</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-black text-foreground">{summary.passed} Patients</span>
+                            <span className="text-[10px] text-brand-teal font-bold ml-1.5">({summary.passRate.toFixed(1)}%)</span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <span className="font-black text-foreground">{summary.failed} Patients</span>
-                          <span className="text-[10px] text-brand-amber font-bold ml-1.5">({failRate.toFixed(1)}%)</span>
+                        <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
+                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                          <span className="font-black text-xs block text-foreground">
+                            ➔ Release: CHF {(summary.passed * 800).toLocaleString()} to Provider
+                          </span>
                         </div>
                       </div>
-                      <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
-                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
-                        <span className="font-black text-xs block text-foreground">
-                          ➔ Clawback: CHF {(summary.failed * 800).toLocaleString()} to Insurers
-                        </span>
+
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="size-2.5 rounded-full bg-brand-amber" />
+                            <span className="font-bold text-foreground">Forfeited Capital (Goals Unmet)</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-black text-foreground">{summary.failed} Patients</span>
+                            <span className="text-[10px] text-brand-amber font-bold ml-1.5">({failRate.toFixed(1)}%)</span>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                          <span className="font-black text-xs block text-foreground">
+                            ➔ Clawback: CHF {(summary.failed * 800).toLocaleString()} to Insurers
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="border-t border-muted-foreground/10 pt-3 w-full text-center">
+                  <div className="border-t border-muted-foreground/10 pt-3 w-full text-center mt-6">
                     <p className="text-[10px] text-muted-foreground font-semibold">
                       <span className="font-bold text-foreground/80">Audit Criteria:</span>{' '}
                       {thresholds.passPolicy === 'all'
@@ -1227,60 +1219,26 @@ export default function Dashboard() {
                     type="text"
                     placeholder="Search Patient ID..."
                     value={needsReviewSearch}
-                    onChange={(e) => {
-                      setNeedsReviewSearch(e.target.value);
-                      setNeedsReviewPage(1);
-                    }}
+                    onChange={(e) => setNeedsReviewSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border bg-background/50 focus:outline-none focus:ring-2 focus:ring-brand-teal transition-all font-semibold"
                   />
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 {filteredNeedsReview.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No patients matches filters.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No patients match filters.</p>
                 ) : (
-                  <>
-                    <div className="space-y-2.5">
-                      {paginatedNeedsReview.map((c) => (
-                        <PatientRow
-                          key={c.patient.patient_id}
-                          patient={c.patient}
-                          evaluation={c.evaluation}
-                          isOpen={expandedPatientId === c.patient.patient_id}
-                          onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
-                        />
-                      ))}
-                    </div>
-                    
-                    {/* Pagination */}
-                    {totalNeedsReviewPages > 1 && (
-                      <div className="flex items-center justify-between border-t border-muted-foreground/10 pt-3 text-xs font-semibold">
-                        <span className="text-muted-foreground">
-                          Page {needsReviewPage} of {totalNeedsReviewPages} ({filteredNeedsReview.length} matching)
-                        </span>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={needsReviewPage === 1}
-                            onClick={() => setNeedsReviewPage(p => p - 1)}
-                            className="h-8 py-0 px-2"
-                          >
-                            Prev
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={needsReviewPage === totalNeedsReviewPages}
-                            onClick={() => setNeedsReviewPage(p => p + 1)}
-                            className="h-8 py-0 px-2"
-                          >
-                            Next
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <div className="max-h-[480px] overflow-y-auto space-y-2.5 pr-1">
+                    {filteredNeedsReview.map((c) => (
+                      <PatientRow
+                        key={c.patient.patient_id}
+                        patient={c.patient}
+                        evaluation={c.evaluation}
+                        isOpen={expandedPatientId === c.patient.patient_id}
+                        onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                      />
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1307,56 +1265,58 @@ export default function Dashboard() {
             />
 
             {/* On-track vs flagged breakdown */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-1 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between">
+            <div className="space-y-6">
+              <Card className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Ongoing Target Breakdown</CardTitle>
                   <CardDescription className="text-xs">
                     "On track" patients are currently meeting all targets; "Flagged" patients represent capital at risk.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center space-y-6 pb-6">
-                  {/* Progress ring */}
-                  <ProgressRing value={onTrackRate} color={onTrackRate >= 70 ? '#55B4A6' : '#E9A23B'} />
-
-                  <div className="w-full space-y-4">
-                    <div className="flex items-center justify-between text-sm border-b border-muted-foreground/5 pb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
-                        <span className="font-bold text-foreground">On Track (Low Risk)</span>
-                      </div>
-                      <div className="text-right font-black">
-                        {cats.onTrack.length} <span className="text-[10px] text-muted-foreground">({onTrackRate.toFixed(1)}%)</span>
-                      </div>
+                <CardContent className="pb-6">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+                    <div className="shrink-0">
+                      <ProgressRing value={onTrackRate} color={onTrackRate >= 70 ? '#55B4A6' : '#E9A23B'} />
                     </div>
-                    
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between text-sm">
+                    <div className="flex-1 w-full space-y-4">
+                      <div className="flex items-center justify-between text-sm border-b border-muted-foreground/5 pb-2">
                         <div className="flex items-center gap-2">
-                          <div className="size-2.5 rounded-full bg-brand-amber" />
-                          <span className="font-bold text-foreground">Flagged (Capital at Risk)</span>
+                          <div className="size-2.5 rounded-full bg-brand-teal glow-teal-sm" />
+                          <span className="font-bold text-foreground">On Track (Low Risk)</span>
                         </div>
                         <div className="text-right font-black">
-                          {cats.flagged.length} <span className="text-[10px] text-brand-amber">({flaggedRate.toFixed(1)}%)</span>
+                          {cats.onTrack.length} <span className="text-[10px] text-muted-foreground">({onTrackRate.toFixed(1)}%)</span>
                         </div>
                       </div>
-                      <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
-                        <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Escrow Risk Summary</span>
-                        <span className="block">{cats.flagged.length} Patients Off-Track</span>
-                        <span className="block text-xs mt-0.5 text-foreground font-black">
-                          ➔ CHF {(cats.flagged.length * 800).toLocaleString()} at Risk
-                        </span>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="size-2.5 rounded-full bg-brand-amber" />
+                            <span className="font-bold text-foreground">Flagged (Capital at Risk)</span>
+                          </div>
+                          <div className="text-right font-black">
+                            {cats.flagged.length} <span className="text-[10px] text-brand-amber">({flaggedRate.toFixed(1)}%)</span>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Escrow Risk Summary</span>
+                          <span className="block">{cats.flagged.length} Patients Off-Track</span>
+                          <span className="block text-xs mt-0.5 text-foreground font-black">
+                            ➔ CHF {(cats.flagged.length * 800).toLocaleString()} at Risk
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground border-t border-muted-foreground/10 pt-3 w-full text-center font-semibold">
+                  <p className="text-[10px] text-muted-foreground border-t border-muted-foreground/10 pt-3 w-full text-center font-semibold mt-6">
                     "On track" = currently meeting all checked targets. Not a projection.
                   </p>
                 </CardContent>
               </Card>
 
               {/* Flagged active patients — sorted nearest completion first */}
-              <Card className="lg:col-span-2 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel">
+              <Card className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel">
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-1.5 text-brand-amber">
@@ -1375,61 +1335,27 @@ export default function Dashboard() {
                       type="text"
                       placeholder="Search Patient ID..."
                       value={flaggedSearch}
-                      onChange={(e) => {
-                        setFlaggedSearch(e.target.value);
-                        setFlaggedPage(1);
-                      }}
+                      onChange={(e) => setFlaggedSearch(e.target.value)}
                       className="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border bg-background/50 focus:outline-none focus:ring-2 focus:ring-brand-teal transition-all font-semibold"
                     />
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent>
                   {filteredFlagged.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No flagged active patients found.</p>
                   ) : (
-                    <>
-                      <div className="space-y-2.5">
-                        {paginatedFlagged.map((c) => (
-                          <PatientRow
-                            key={c.patient.patient_id}
-                            patient={c.patient}
-                            evaluation={c.evaluation}
-                            daysRemaining={c.daysRemaining}
-                            isOpen={expandedPatientId === c.patient.patient_id}
-                            onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Pagination */}
-                      {totalFlaggedPages > 1 && (
-                        <div className="flex items-center justify-between border-t border-muted-foreground/10 pt-3 text-xs font-semibold">
-                          <span className="text-muted-foreground">
-                            Page {flaggedPage} of {totalFlaggedPages} ({filteredFlagged.length} matching)
-                          </span>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={flaggedPage === 1}
-                              onClick={() => setFlaggedPage(p => p - 1)}
-                              className="h-8 py-0 px-2"
-                            >
-                              Prev
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={flaggedPage === totalFlaggedPages}
-                              onClick={() => setFlaggedPage(p => p + 1)}
-                              className="h-8 py-0 px-2"
-                            >
-                              Next
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    <div className="max-h-[480px] overflow-y-auto space-y-2.5 pr-1">
+                      {filteredFlagged.map((c) => (
+                        <PatientRow
+                          key={c.patient.patient_id}
+                          patient={c.patient}
+                          evaluation={c.evaluation}
+                          daysRemaining={c.daysRemaining}
+                          isOpen={expandedPatientId === c.patient.patient_id}
+                          onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                        />
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
