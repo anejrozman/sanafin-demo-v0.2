@@ -124,7 +124,7 @@ function AppSidebar() {
       <SidebarContent>
         {isCollapsed && (
           <div className="flex justify-center pt-1">
-            <SidebarTrigger className="size-8 [&_svg]:size-4" />
+            <SidebarTrigger className="size-11 [&_svg]:size-5" />
           </div>
         )}
 
@@ -135,7 +135,7 @@ function AppSidebar() {
               <span className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground/85">
                 Clinical Workflow
               </span>
-              <SidebarTrigger className="size-6 [&_svg]:size-3.5 shrink-0 text-muted-foreground/80 hover:text-foreground transition-colors" />
+              <SidebarTrigger className="size-11 [&_svg]:size-5 shrink-0 text-muted-foreground/80 hover:text-foreground transition-colors" />
             </SidebarGroupLabel>
           ) : (
             <SidebarGroupLabel>WF</SidebarGroupLabel>
