@@ -1,7 +1,7 @@
 import { useState, Fragment } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
-import { ArrowRight, Database, ShieldCheck, Banknote } from 'lucide-react';
+import { ArrowRight, Database, Target, ScrollText, Banknote } from 'lucide-react';
 import sanafinLogo from '../../assets/sanafin_logo.png';
 
 interface WelcomePageProps {
@@ -14,27 +14,23 @@ interface WelcomePageProps {
 const steps = [
   {
     icon: Database,
-    label: 'Capture Outcomes',
+    label: 'Upload Patient Data',
     color: 'bg-brand-teal',
-    textColor: 'text-brand-teal',
-    borderColor: 'border-brand-teal/30',
-    bg: 'bg-brand-teal/10',
   },
   {
-    icon: ShieldCheck,
-    label: 'Prove Impact',
+    icon: Target,
+    label: 'Configure Treatment Objectives',
+    color: 'bg-violet-500',
+  },
+  {
+    icon: ScrollText,
+    label: 'Specify Payment Agreement',
     color: 'bg-brand-amber',
-    textColor: 'text-brand-amber',
-    borderColor: 'border-brand-amber/30',
-    bg: 'bg-brand-amber/10',
   },
   {
     icon: Banknote,
-    label: 'Automate Settlement',
-    color: 'bg-brand-teal',
-    textColor: 'text-brand-teal',
-    borderColor: 'border-brand-teal/30',
-    bg: 'bg-brand-teal/10',
+    label: 'Manage Ongoing Treatment and Automate Settlement',
+    color: 'bg-emerald-600',
   },
 ];
 
@@ -119,16 +115,20 @@ export default function WelcomePage({
                 </div>
                 <div className="mt-6 space-y-2.5 text-xs text-muted-foreground w-full max-w-2xl font-semibold">
                   <div className="flex gap-2">
-                    <span className="font-bold text-brand-teal">1.</span>
-                    <span>Capture: Connect telemetry clinical data (smart scales, CGM, medication sync).</span>
+                    <span className="font-bold text-brand-teal shrink-0">1.</span>
+                    <span>Upload a patient cohort CSV with clinical measurements — HbA1c, CGM time-in-range, weight, and coaching attendance.</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="font-bold text-brand-teal">2.</span>
-                    <span>Verify: Prove impact by checking patient compliance against EDEN verification rules.</span>
+                    <span className="font-bold text-violet-500 shrink-0">2.</span>
+                    <span>Set treatment outcome targets — the clinical thresholds each patient must meet for the treatment to be considered successful.</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="font-bold text-brand-teal">3.</span>
-                    <span>Settle: Trigger automated escrow payouts or clawbacks based on smart contract settlement triggers.</span>
+                    <span className="font-bold text-brand-amber shrink-0">3.</span>
+                    <span>Define the escrow structure: total contract value, base vs. performance split, and the per-patient settlement amount at stake.</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-bold text-emerald-600 shrink-0">4.</span>
+                    <span>Track patient progress in real time and trigger automated escrow payouts or clawbacks based on verified clinical outcomes.</span>
                   </div>
                 </div>
               </>
