@@ -25,7 +25,11 @@ function AutosaveIndicator({ status, justNow }: { status: SaveStatus; justNow: b
   );
 }
 
-export default function OutcomeTargets() {
+interface OutcomeTargetsProps {
+  onConfirm?: () => void;
+}
+
+export default function OutcomeTargets({ onConfirm }: OutcomeTargetsProps = {}) {
   const { thresholds, setThresholds } = useData();
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [justNow, setJustNow] = useState(false);
@@ -171,9 +175,19 @@ export default function OutcomeTargets() {
         ))}
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center pt-3 border-t border-foreground/5 font-semibold">
-        💡 Changes to outcome targets are automatically saved and re-applied to the dashboard in real-time.
-      </p>
+      <div className="pt-3 border-t border-foreground/5 space-y-4">
+        <p className="text-[10px] text-muted-foreground text-center font-semibold">
+          Changes to outcome targets are automatically saved and re-applied to the dashboard in real-time.
+        </p>
+        {onConfirm && (
+          <button
+            onClick={onConfirm}
+            className="w-full rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-bold py-3 text-sm transition-all shadow-lg"
+          >
+            Set outcome targets
+          </button>
+        )}
+      </div>
     </div>
   );
 }

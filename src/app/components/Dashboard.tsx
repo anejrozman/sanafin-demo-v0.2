@@ -1,30 +1,17 @@
 import { useMemo, useState } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts';
-import { Loader2, Info, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame, ShieldAlert, DollarSign, Wallet, TrendingUp } from 'lucide-react';
+import { Loader2, Search, ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Calendar, User, Activity, Flame, ShieldAlert, LayoutDashboard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { useData } from '../../store/DataContext';
 import {
-  getCohortSummary, getRulePerformance, getEnrollmentSpan,
+  getCohortSummary, getRulePerformance,
   getAsOfDate, partitionByStatus,
-  classifyCohort, getByCategory, getFlaggedSorted,
+  classifyCohort, getByCategory,
   type ClassifiedPatient,
 } from '../../lib/selectors';
 import { type PatientRecord } from '../../lib/schema';
 
-function fmtDate(iso: string) {
-  if (!iso || typeof iso !== 'string' || !iso.includes('-')) return '—';
-  const parts = iso.split('-');
-  if (parts.length < 2) return '—';
-  const [y, m] = parts;
-  const monthIdx = parseInt(m, 10) - 1;
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  if (monthIdx < 0 || monthIdx > 11) return `${y}`;
-  return `${months[monthIdx]} ${y}`;
-}
 
 function fmt(v: number | null | undefined, decimals = 1): string {
   return (v != null && isFinite(v)) ? v.toFixed(decimals) : '—';
@@ -129,6 +116,40 @@ function ProgressRing({
       <div className="absolute flex flex-col items-center">
         <span className="text-2xl font-black tracking-tight text-foreground tabular-nums">{safeValue.toFixed(0)}%</span>
         <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">VERIFIED</span>
+      </div>
+    </div>
+  );
+}
+
+function GoalMetricCard({ label, passRate, isPrimary }: { label: string; passRate: number; isPrimary?: boolean }) {
+  const passing = passRate >= 70;
+  const barColor = passing ? '#55B4A6' : '#E9A23B';
+  return (
+    <div className={`rounded-2xl border p-8 space-y-6 flex flex-col justify-between glass-panel transition-all hover:shadow-lg ${
+      isPrimary ? 'border-brand-amber/30 bg-brand-amber/4' : 'border-foreground/5 bg-background/50'
+    }`}>
+      {isPrimary && (
+        <span className="text-[9px] font-black uppercase tracking-widest text-brand-amber bg-brand-amber/10 px-2 py-0.5 rounded-md w-fit glow-amber-md">
+          Primary Risk Driver
+        </span>
+      )}
+      <div>
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{label}</p>
+        <p className="text-6xl font-black mt-3 text-foreground tabular-nums">{passRate.toFixed(1)}%</p>
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 bg-muted/40 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${Math.min(passRate, 100)}%`, backgroundColor: barColor }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-xs font-semibold">
+          <span style={{ color: barColor }}>
+            {passing ? '✓ On target' : '⚠ Below threshold'}
+          </span>
+          <span className="text-muted-foreground">Target: ≥ 70%</span>
+        </div>
       </div>
     </div>
   );
@@ -394,7 +415,7 @@ function PatientRow({
                   {patient.sessions_attended} / {patient.total_sessions}
                 </span>
                 <span className="text-[10px] text-muted-foreground/80 font-bold">
-                  {patient.program_duration_days} days
+                  {patient.total_sessions} sessions total
                 </span>
               </div>
             </div>
@@ -708,8 +729,119 @@ const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
   }
 ];
 
+function fmtChf(n: number): string {
+  return `CHF ${Math.round(n).toLocaleString('de-CH')}`;
+}
+
+function computeCohortFinancials(
+  contractType: string,
+  params: Record<string, string | number>,
+  totalPatients: number,
+  passCount: number,
+  failCount: number,
+) {
+  const base = Number(params.base_payment) || 800;
+  const escrow = base * totalPatients;
+  let guaranteed = 0, performanceEarned = 0, performanceLost = 0;
+
+  switch (contractType) {
+    case 'p4p':
+      guaranteed = 0;
+      performanceEarned = base * passCount;
+      performanceLost = base * (Number(params.penalty || 5) / 100) * failCount;
+      break;
+    case 'shared': {
+      const savPct = Number(params.savings_share || 30) / 100;
+      const riskPct = Number(params.risk_share || 20) / 100;
+      guaranteed = base * Math.max(0, 1 - savPct - riskPct) * totalPatients;
+      performanceEarned = base * savPct * passCount;
+      performanceLost = base * riskPct * failCount;
+      break;
+    }
+    case 'bundled':
+      guaranteed = base * totalPatients;
+      performanceEarned = base * (Number(params.savings_rate || 50) / 100) * passCount;
+      performanceLost = base * (Number(params.risk_threshold || 10) / 100) * failCount;
+      break;
+    case 'capitation':
+      guaranteed = base * totalPatients;
+      performanceEarned = base * (Number(params.prevention_bonus || 5) / 100) * passCount;
+      performanceLost = 0;
+      break;
+    default:
+      guaranteed = 0;
+      performanceEarned = 0;
+      performanceLost = 0;
+  }
+
+  return {
+    escrow,
+    guaranteed,
+    performanceEarned,
+    performanceLost,
+    net: guaranteed + performanceEarned - performanceLost,
+  };
+}
+
+const CONTRACT_NAMES: Record<string, string> = {
+  p4p: 'Pay-for-Performance (P4P)',
+  shared: 'Shared Savings / Shared Risk',
+  bundled: 'Bundled Payments',
+  capitation: 'Capitation',
+};
+
+function FinancialCol({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+  return (
+    <div className="flex flex-col gap-1 min-w-[120px]">
+      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
+      <span className={`text-xl font-black tracking-tight ${accent ?? 'text-foreground'}`}>{value}</span>
+      {sub && <span className="text-[10px] font-semibold text-muted-foreground">{sub}</span>}
+    </div>
+  );
+}
+
+function CohortFinancials({
+  title,
+  label,
+  isFinal,
+  passCount,
+  failCount,
+  total,
+  fin,
+}: {
+  title: string;
+  label: string;
+  isFinal: boolean;
+  passCount: number;
+  failCount: number;
+  total: number;
+  fin: ReturnType<typeof computeCohortFinancials>;
+}) {
+  return (
+    <div className="flex-1 min-w-0 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{title}</span>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFinal ? 'bg-brand-teal/15 text-brand-teal' : 'bg-brand-amber/15 text-brand-amber'}`}>
+          {isFinal ? 'Final' : 'Current Exposure'}
+        </span>
+      </div>
+      <p className="text-[10px] text-muted-foreground font-semibold">{label} — {passCount} pass / {failCount} fail / {total} total</p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+        <FinancialCol label="Escrow Locked" value={fmtChf(fin.escrow)} sub="Total at stake" />
+        <FinancialCol label="Guaranteed" value={fmtChf(fin.guaranteed)} sub="Fixed portion" accent="text-brand-teal" />
+        <FinancialCol label="Performance Earned" value={fmtChf(fin.performanceEarned)} sub="Bonus unlocked" accent="text-brand-teal" />
+        <FinancialCol label="Returned to Insurer" value={fmtChf(fin.performanceLost)} sub="Penalties / clawback" accent={fin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'} />
+      </div>
+      <div className="flex items-center gap-3 pt-1 border-t border-foreground/8">
+        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Net to Provider</span>
+        <span className="text-base font-black text-foreground">{fmtChf(fin.net)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const { patients, thresholds, dataSource, isLoading, processed } = useData();
+  const { patients, thresholds, dataSource, isLoading, contractType, contractParams } = useData();
 
   const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
   const { completed, active } = useMemo(() => partitionByStatus(patients, asOf), [patients, asOf]);
@@ -717,11 +849,27 @@ export default function Dashboard() {
   const summary      = useMemo(() => getCohortSummary(completed, thresholds), [completed, thresholds]);
   const activeSummary = useMemo(() => getCohortSummary(active, thresholds), [active, thresholds]);
   const rulePerf     = useMemo(() => getRulePerformance(completed, thresholds), [completed, thresholds]);
-  const span         = useMemo(() => getEnrollmentSpan(patients), [patients]);
-
   const classified   = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
   const cats         = useMemo(() => getByCategory(classified), [classified]);
-  const flaggedSorted = useMemo(() => getFlaggedSorted(classified), [classified]);
+
+  const completedFin = useMemo(() => {
+    if (!contractType) return null;
+    return computeCohortFinancials(contractType, contractParams, completed.length, summary.passed, summary.failed);
+  }, [contractType, contractParams, completed.length, summary.passed, summary.failed]);
+
+  const ongoingFin = useMemo(() => {
+    if (!contractType) return null;
+    const ongoingTotal = cats.onTrack.length + cats.flagged.length;
+    return computeCohortFinancials(contractType, contractParams, ongoingTotal, cats.onTrack.length, cats.flagged.length);
+  }, [contractType, contractParams, cats.onTrack.length, cats.flagged.length]);
+
+  const combinedFin = useMemo(() => {
+    if (!contractType) return null;
+    const combinedTotal = completed.length + cats.onTrack.length + cats.flagged.length;
+    const combinedPass = summary.passed + cats.onTrack.length;
+    const combinedFail = summary.failed + cats.flagged.length;
+    return computeCohortFinancials(contractType, contractParams, combinedTotal, combinedPass, combinedFail);
+  }, [contractType, contractParams, completed.length, summary.passed, summary.failed, cats.onTrack.length, cats.flagged.length]);
 
   // Search & Pagination states
   const [needsReviewSearch, setNeedsReviewSearch] = useState('');
@@ -761,17 +909,20 @@ export default function Dashboard() {
   const totalFlaggedPages = Math.ceil(filteredFlagged.length / 5) || 1;
   const paginatedFlagged = filteredFlagged.slice((flaggedPage - 1) * 5, flaggedPage * 5);
 
+  function scrollToId(id: string) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - 64), behavior: 'smooth' });
+  }
+
   return (
-    <div id="overview-section" className="space-y-8 scroll-mt-20">
+    <div id="overview-section" className="space-y-10 scroll-mt-20">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Outcome Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-            <span className="font-semibold text-foreground/80">Audit Timeline:</span>
-            {span
-              ? `${fmtDate(span.earliestEnrollment)} – ${fmtDate(span.latestMeasurement)} · ${patients.length} patients`
-              : 'Cohort outcome verification summary'}
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black tracking-tight">Outcome Dashboard</h1>
+          <p className="text-sm text-muted-foreground font-medium">
+            Click any node in the workflow above to go back and reconfigure that step.
           </p>
         </div>
         <Badge
@@ -782,96 +933,172 @@ export default function Dashboard() {
         </Badge>
       </div>
 
-      {/* Contract & Escrow Metrics Banner (Fintech Layer) */}
+      {/* Overview section title */}
+      <SectionHeader title="Overview" count={patients.length} icon={LayoutDashboard} accent="border-brand-teal" />
+
+      {/* ── Active Contract Summary ─────────────────────────────────────────── */}
+      <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-8 shadow-md relative overflow-hidden group glass-panel">
+        <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
+          <Activity className="size-48 text-brand-teal" />
+        </div>
+        <div className="space-y-6 z-10 relative">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Activity className="size-5 text-brand-teal animate-pulse" />
+              <h2 className="text-xl font-black tracking-tight">Active Contract Summary</h2>
+            </div>
+            <p className="text-sm text-muted-foreground font-medium">
+              Real-world evidence capture and smart contract audit for {patients.length} total participants.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Completed Patients</span>
+              <span className="text-3xl font-black text-foreground">{completed.length}</span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Verified Payouts</span>
+              <span className="text-3xl font-black text-brand-teal">{summary.passed}</span>
+              <span className="text-xs text-muted-foreground font-semibold">of {completed.length} completed</span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Active Patients</span>
+              <span className="text-3xl font-black text-foreground">{active.length}</span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Flagged / At Risk</span>
+              <span className="text-3xl font-black text-brand-amber">{cats.flagged.length}</span>
+              <span className="text-xs text-muted-foreground font-semibold">of {active.length} active</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-foreground/8">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Completed — Settle</span>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <span className="text-brand-teal">{summary.passed} verified</span>
+                <span className="text-muted-foreground/40">/</span>
+                <span className="text-brand-amber">{summary.failed} forfeited</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ongoing — Verify</span>
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <span className="text-brand-teal">{cats.onTrack.length} on track</span>
+                <span className="text-muted-foreground/40">/</span>
+                <span className="text-brand-amber">{cats.flagged.length} flagged</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Contract & Escrow Metrics ────────────────────────────────────────── */}
       <div className="bg-background/80 border border-brand-teal/40 rounded-2xl p-6 shadow-md relative overflow-hidden group glass-panel">
         <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
           <ShieldAlert className="size-36 text-brand-teal" />
         </div>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 z-10 relative">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="size-2.5 rounded-full bg-brand-teal animate-pulse" />
-              <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">
-                Contract & Escrow Metrics
-              </h2>
-            </div>
-            <p className="text-2xl font-black tracking-tight text-foreground">
-              Smart Contract Settlement Infrastructure
-            </p>
-            <p className="text-xs text-muted-foreground max-w-xl font-medium mt-1">
-              Risk-sharing payment protocols linking digital biomarkers directly to smart contract settlement triggers. Automated audits verified dynamically.
-            </p>
+        <div className="space-y-5 z-10 relative">
+          <div className="flex items-center gap-2">
+            <div className="size-2.5 rounded-full bg-brand-teal animate-pulse" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Contract & Escrow Metrics</h2>
+            {contractType && (
+              <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-teal/10 text-brand-teal border border-brand-teal/20">
+                {CONTRACT_NAMES[contractType] ?? contractType}
+              </span>
+            )}
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 divide-y sm:divide-y-0 sm:divide-x divide-muted-foreground/15">
-            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-4 first:pl-0">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Total Escrow Volume</span>
-              <span className="text-2xl font-black text-foreground mt-1 block tracking-tight">
-                CHF 200,000
-              </span>
-              <span className="text-[9px] text-brand-amber font-extrabold uppercase tracking-wider mt-0.5 block">
-                Volume under Risk
-              </span>
+
+          {!contractType ? (
+            <p className="text-sm text-muted-foreground font-medium">
+              No payment contract configured. Complete the payment agreement step to see financial reporting here.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Two clickable cohort cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {completedFin && (
+                  <button
+                    onClick={() => scrollToId('completion-section')}
+                    className="text-left rounded-xl border border-brand-teal/20 bg-brand-teal/4 hover:bg-brand-teal/8 hover:border-brand-teal/35 transition-all p-5 group/card"
+                  >
+                    <CohortFinancials
+                      title="Completed Cohort"
+                      label="Treatment concluded"
+                      isFinal={true}
+                      passCount={summary.passed}
+                      failCount={summary.failed}
+                      total={completed.length}
+                      fin={completedFin}
+                    />
+                    <p className="text-[10px] font-bold text-brand-teal mt-4 group-hover/card:underline">
+                      View completed patients →
+                    </p>
+                  </button>
+                )}
+                {ongoingFin && (
+                  <button
+                    onClick={() => scrollToId('ongoing-section')}
+                    className="text-left rounded-xl border border-brand-amber/20 bg-brand-amber/4 hover:bg-brand-amber/8 hover:border-brand-amber/35 transition-all p-5 group/card"
+                  >
+                    <CohortFinancials
+                      title="Ongoing Cohort"
+                      label="Active treatment — current exposure"
+                      isFinal={false}
+                      passCount={cats.onTrack.length}
+                      failCount={cats.flagged.length}
+                      total={cats.onTrack.length + cats.flagged.length}
+                      fin={ongoingFin}
+                    />
+                    <p className="text-[10px] font-bold text-brand-amber mt-4 group-hover/card:underline">
+                      View ongoing patients →
+                    </p>
+                  </button>
+                )}
+              </div>
+
+              {/* Combined view */}
+              {combinedFin && (
+                <div className="rounded-xl border border-foreground/8 bg-background/60 p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-foreground/8" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2">Combined — All Patients</span>
+                    <div className="h-px flex-1 bg-foreground/8" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Escrow</span>
+                      <span className="text-lg font-black text-foreground">{fmtChf(combinedFin.escrow)}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Guaranteed</span>
+                      <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.guaranteed)}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Perf. Earned</span>
+                      <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.performanceEarned)}</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Returned</span>
+                      <span className={`text-lg font-black ${combinedFin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'}`}>
+                        {fmtChf(combinedFin.performanceLost)}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Net to Provider</span>
+                      <span className="text-lg font-black text-foreground">{fmtChf(combinedFin.net)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-6">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Escrow Split</span>
-              <span className="text-2xl font-black text-foreground mt-1 block tracking-tight">
-                60% / 40%
-              </span>
-              <span className="text-[9px] text-muted-foreground font-bold mt-0.5 block">
-                Base Payment / Performance (CHF 80,000 at risk)
-              </span>
-            </div>
-            
-            <div className="flex flex-col justify-between pt-4 sm:pt-0 sm:pl-6">
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest block">Smart Contract State</span>
-              <span className="inline-flex items-center gap-1.5 mt-2 bg-brand-amber/10 border border-brand-amber/35 text-brand-amber text-[10px] font-black tracking-wider px-2.5 py-1 rounded-md uppercase w-fit">
-                <span className="size-1.5 rounded-full bg-brand-amber animate-pulse" />
-                Active / Pending Settlement Audit
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Dynamic Results Summary Banner (Ongoing vs Completion) */}
-      <div className="bg-background/80 border border-brand-teal/30 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
-          <Activity className="size-36 text-brand-teal" />
-        </div>
-        <div className="space-y-1 z-10">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Activity className="size-5 text-brand-teal animate-pulse" />
-            Active EDEN Contract Verification Summary
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Real-world evidence capture and smart contract audit for {patients.length} total participants under the EDEN framework.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-4 md:gap-8 z-10">
-          <div className="border-l-4 border-brand-teal pl-4 py-0.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Settle (Completed)</span>
-            <span className="text-base font-bold mt-1 block">
-              <span className="text-brand-teal">{summary.passed} Verified Payouts</span>
-              <span className="text-muted-foreground/50 mx-1.5">/</span>
-              <span className="text-brand-amber">{summary.failed} Forfeited</span>
-            </span>
-          </div>
-          <div className="border-l-4 border-indigo-400 pl-4 py-0.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Verify (Active)</span>
-            <span className="text-base font-bold mt-1 block">
-              <span className="text-brand-teal">{cats.onTrack.length} On Track</span>
-              <span className="text-muted-foreground/50 mx-1.5">/</span>
-              <span className="text-brand-amber">{cats.flagged.length} Flagged</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── COMPLETION (COMPLETED TREATMENT) ─────────────────────────────────── */}
-      <div id="completion-section" className="space-y-6 scroll-mt-20">
-        <SectionHeader title="Completion (completed treatment)" count={completed.length} icon={CheckCircle2} accent="border-brand-teal" />
+      {/* ── COMPLETED ────────────────────────────────────────────────────────── */}
+      <div id="completion-section" className="space-y-6 scroll-mt-20 pt-10 mt-4">
+        <div className="h-px bg-gradient-to-r from-brand-teal/50 via-brand-teal/15 to-transparent mb-2" />
+        <SectionHeader title="Completed" count={completed.length} icon={CheckCircle2} accent="border-brand-teal" />
 
         {completed.length === 0 ? (
           <p className="text-sm text-muted-foreground">No patients have completed treatment yet.</p>
@@ -886,88 +1113,36 @@ export default function Dashboard() {
               weight={summary.avgWeightLossPct}
             />
 
-            {/* Outcome breakdown + target pass-rate chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
-                <CardHeader>
-                  <CardTitle className="text-base font-bold text-foreground">Goal Success Rates</CardTitle>
-                  <CardDescription className="text-xs space-y-2">
-                    <div>Share of completed patients meeting each threshold.</div>
-                    {rulePerf.length > 0 && (
-                      <div className="flex flex-col gap-1.5 mt-2">
-                        <span className="w-fit font-bold text-brand-amber bg-brand-amber/10 px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wider glow-amber-md">
-                          Primary Performance Risk Driver: {rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min).label} Underperformance
-                        </span>
-                        <p className="text-[10px] text-muted-foreground italic font-semibold">
-                          Note: Underperformance in clinical benchmarks directly triggers the financial forfeiture of the performance escrow.
-                        </p>
-                      </div>
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] mt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={rulePerf}
-                        layout="vertical"
-                        margin={{ left: 8, right: 40, top: 4, bottom: 4 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.04)" />
-                        <XAxis
-                          type="number"
-                          domain={[0, 100]}
-                          tickFormatter={v => `${v}%`}
-                          tick={{ fontSize: 10, fontWeight: 600 }}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          type="category"
-                          dataKey="label"
-                          width={140}
-                          tick={{ fontSize: 10, fontWeight: 700 }}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0]?.payload;
-                              if (!data) return null;
-                              return (
-                                <div className="rounded-xl border border-foreground/10 bg-foreground/95 text-background px-3 py-2 text-[10px] font-bold shadow-xl backdrop-blur-md">
-                                  <p className="font-extrabold">{data.label ?? '—'}</p>
-                                  <p className="mt-0.5 text-brand-teal">Pass Rate: <span className="font-black">{(data.passRate != null && isFinite(data.passRate)) ? `${data.passRate.toFixed(1)}%` : '—'}</span></p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                          cursor={{ fill: 'rgba(85,180,166,0.04)' }}
-                        />
-                        <Bar dataKey="passRate" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                          {rulePerf.map(entry => (
-                            <Cell key={entry.ruleId} fill={entry.passRate >= 70 ? '#55B4A6' : '#E9A23B'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex items-center gap-4 text-[10px] text-muted-foreground mt-4 border-t border-muted-foreground/10 pt-3 font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-brand-teal glow-teal-sm" />
-                      <span>≥ 70% pass rate target</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-brand-amber" />
-                      <span>below 70% pass rate target</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Goal Success Rates — full width */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Goal Success Rates</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Share of completed patients meeting each clinical threshold.</p>
+                {rulePerf.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground italic font-semibold mt-1">
+                    Underperformance in any benchmark directly triggers forfeiture of the performance escrow.
+                  </p>
+                )}
+              </div>
+              <div className={`grid gap-5 ${rulePerf.length <= 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-3'}`}>
+                {(() => {
+                  const worstIdx = rulePerf.length > 0
+                    ? rulePerf.indexOf(rulePerf.reduce((min, r) => r.passRate < min.passRate ? r : min))
+                    : -1;
+                  return rulePerf.map((rule, idx) => (
+                    <GoalMetricCard
+                      key={rule.ruleId}
+                      label={rule.label}
+                      passRate={rule.passRate}
+                      isPrimary={idx === worstIdx && rule.passRate < 70}
+                    />
+                  ));
+                })()}
+              </div>
+            </div>
 
-              <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between">
+            {/* Outcome breakdown */}
+            <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card flex flex-col justify-between max-w-lg">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Settlement Audit: Verified Payout vs Forfeited Capital</CardTitle>
                   <CardDescription className="text-xs">
@@ -1028,8 +1203,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </CardContent>
-              </Card>
-            </div>
+            </Card>
 
             {/* Needs review: failed completed patients */}
             <Card className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel">
@@ -1112,9 +1286,10 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── ONGOING (ACTIVE TREATMENT) ───────────────────────────────────────── */}
-      <div id="ongoing-section" className="space-y-6 scroll-mt-20">
-        <SectionHeader title="Ongoing (active treatment)" count={active.length} icon={Flame} accent="border-border/80" />
+      {/* ── ONGOING ──────────────────────────────────────────────────────────── */}
+      <div id="ongoing-section" className="space-y-6 scroll-mt-20 pt-10 mt-4">
+        <div className="h-px bg-gradient-to-r from-brand-amber/50 via-brand-amber/15 to-transparent mb-2" />
+        <SectionHeader title="Ongoing" count={active.length} icon={Activity} accent="border-brand-amber" />
 
         {active.length === 0 ? (
           <p className="text-sm text-muted-foreground">No patients currently in treatment.</p>

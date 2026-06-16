@@ -11,9 +11,10 @@ interface DataUploadProps {
   initialTab?: 'sample' | 'upload';
   onClose?: () => void;
   onNodeClick?: (nodeId: 'injection' | 'verification' | 'reporting') => void;
+  showWorkflow?: boolean;
 }
 
-export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps) {
+export default function DataUpload({ initialTab, onNodeClick, showWorkflow = true }: DataUploadProps) {
   const {
     patients, dataSource, thresholds, isLoading,
     processed, setProcessed,
@@ -143,10 +144,10 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
   }
 
   return (
-    <div id="upload-section" className="px-6 py-4 border-b border-muted-foreground/10 bg-background/5 rounded-2xl glass-panel">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    <div id="upload-section" className={`px-6 py-4 ${showWorkflow ? 'border-b border-muted-foreground/10 bg-background/5 rounded-2xl glass-panel' : 'p-6'}`}>
+      <div className={showWorkflow ? 'grid grid-cols-1 lg:grid-cols-12 gap-8 items-center' : ''}>
         {/* Left Column: Text and Actions */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className={showWorkflow ? 'lg:col-span-4 space-y-4' : 'space-y-4'}>
           <div className="space-y-1">
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Capture Outcomes</h1>
             <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
@@ -334,20 +335,20 @@ export default function DataUpload({ initialTab, onNodeClick }: DataUploadProps)
           </div>
         </div>
 
-        {/* Right Column: WorkflowView Nodes (Minimal vertical space) */}
-        <div className="lg:col-span-8">
-          <WorkflowView
-            filename={processedFilename}
-            patients={patients}
-            thresholds={thresholds}
-            initiallyComplete={animationSeen}
-            onComplete={() => {
-              setAnimationSeen(true);
-            }}
-            onNodeClick={onNodeClick}
-            processed={processed}
-          />
-        </div>
+        {/* Right Column: WorkflowView Nodes — only shown in full (non-modal) mode */}
+        {showWorkflow && (
+          <div className="lg:col-span-8">
+            <WorkflowView
+              filename={processedFilename}
+              patients={patients}
+              thresholds={thresholds}
+              initiallyComplete={animationSeen}
+              onComplete={() => { setAnimationSeen(true); }}
+              onNodeClick={onNodeClick}
+              processed={processed}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
