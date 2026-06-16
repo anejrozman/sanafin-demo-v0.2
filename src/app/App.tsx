@@ -11,7 +11,8 @@ import { Dialog, DialogContent } from './components/ui/dialog';
 import { Badge } from './components/ui/badge';
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider,
   SidebarTrigger, useSidebar,
 } from './components/ui/sidebar';
 import { HelpCircle, SlidersHorizontal, Upload, Home, CheckCircle2, Flame } from 'lucide-react';
@@ -101,19 +102,19 @@ function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
-      <SidebarHeader className={`h-20 flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-3'}`}>
+      <SidebarHeader className={`h-16 flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-3'}`}>
         {isCollapsed ? (
-          <img src={symbolIcon} alt="SanaFin" className="h-10 w-10 object-contain" />
+          <img src={symbolIcon} alt="SanaFin" className="h-8 w-8 object-contain" />
         ) : (
           <div className="flex w-full items-center justify-center px-2">
-            <img src={sanafinLogo} alt="SanaFin" className="h-14 w-auto object-contain" />
+            <img src={sanafinLogo} alt="SanaFin" className="h-12 w-auto object-contain" />
           </div>
         )}
       </SidebarHeader>
       <SidebarContent>
         {isCollapsed && (
-          <div className="flex justify-center pt-3">
-            <SidebarTrigger className="size-10 [&_svg]:size-5" />
+          <div className="flex justify-center pt-1">
+            <SidebarTrigger className="size-8 [&_svg]:size-4" />
           </div>
         )}
         <SidebarGroup>
@@ -127,9 +128,9 @@ function AppSidebar() {
           )}
           <SidebarGroupContent className="mt-2">
             <SidebarMenu>
-              {/* Data Ingestion */}
+              {/* Data Ingestion — top-level page */}
               <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-                <SidebarMenuButton 
+                <SidebarMenuButton
                   onClick={() => handleScroll('upload-section')}
                   className="[&>svg]:size-4 group-data-[collapsible=icon]:size-8! cursor-pointer"
                 >
@@ -138,54 +139,48 @@ function AppSidebar() {
                     <span>Capture Outcomes</span>
                   </div>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
 
-              {/* Overview */}
-              <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-                <SidebarMenuButton 
-                  onClick={() => handleScroll('overview-section')}
-                  disabled={!dashboardVisible}
-                  className={`[&>svg]:size-4 group-data-[collapsible=icon]:size-8! cursor-pointer ${
-                    !dashboardVisible ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3 w-full font-bold text-xs">
-                    <Home className="text-brand-teal size-4 shrink-0" />
-                    <span>Overview</span>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                {/* Dashboard sections — indented sub-navigation */}
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      size="sm"
+                      className={!dashboardVisible ? 'opacity-40 pointer-events-none' : ''}
+                    >
+                      <button onClick={() => handleScroll('overview-section')} disabled={!dashboardVisible}>
+                        <Home className="text-brand-teal size-3.5 shrink-0" />
+                        <span>Overview</span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
 
-              {/* Completion */}
-              <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-                <SidebarMenuButton 
-                  onClick={() => handleScroll('completion-section')}
-                  disabled={!dashboardVisible}
-                  className={`[&>svg]:size-4 group-data-[collapsible=icon]:size-8! cursor-pointer ${
-                    !dashboardVisible ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3 w-full font-bold text-xs">
-                    <CheckCircle2 className="text-brand-teal size-4 shrink-0" />
-                    <span>Completion</span>
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      size="sm"
+                      className={!dashboardVisible ? 'opacity-40 pointer-events-none' : ''}
+                    >
+                      <button onClick={() => handleScroll('completion-section')} disabled={!dashboardVisible}>
+                        <CheckCircle2 className="text-brand-teal size-3.5 shrink-0" />
+                        <span>Completion</span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
 
-              {/* Ongoing */}
-              <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-                <SidebarMenuButton 
-                  onClick={() => handleScroll('ongoing-section')}
-                  disabled={!dashboardVisible}
-                  className={`[&>svg]:size-4 group-data-[collapsible=icon]:size-8! cursor-pointer ${
-                    !dashboardVisible ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3 w-full font-bold text-xs">
-                    <Flame className="text-brand-amber size-4 shrink-0" />
-                    <span>Ongoing</span>
-                  </div>
-                </SidebarMenuButton>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      size="sm"
+                      className={!dashboardVisible ? 'opacity-40 pointer-events-none' : ''}
+                    >
+                      <button onClick={() => handleScroll('ongoing-section')} disabled={!dashboardVisible}>
+                        <Flame className="text-brand-amber size-3.5 shrink-0" />
+                        <span>Ongoing</span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
