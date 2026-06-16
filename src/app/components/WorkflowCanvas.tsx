@@ -22,44 +22,39 @@ function MiniWorkflowBar({
   return (
     // sticky top-16 sits flush below AppHeader (h-16). overflow:clip on <main>
     // (not overflow:hidden) ensures sticky works relative to the viewport.
-    <div data-mini-bar className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-4">
-      <div className="flex flex-col gap-3">
+    <div data-mini-bar className="border-b border-foreground/5 bg-background/90 backdrop-blur sticky top-16 z-20 px-8 py-3">
+      <div className="flex flex-col items-center gap-2">
         {/* Header */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-black uppercase tracking-widest text-foreground/80">
+          <span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">
             Workflow Configuration
           </span>
-          <span className="text-xs text-muted-foreground font-medium">
+          <span className="text-[10px] text-muted-foreground font-medium">
             · Click any step to go back and reconfigure it
           </span>
         </div>
         {/* Step nodes */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center justify-center gap-2 flex-wrap">
           {STEPS.map((step, i) => {
             const Icon = step.Icon;
             return (
               <Fragment key={step.id}>
                 <button
                   onClick={() => onNodeClick(i)}
-                  className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-foreground/5 bg-background/60 hover:bg-background hover:shadow-md transition-all cursor-pointer group"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-foreground/5 bg-background/60 hover:bg-background hover:shadow-md transition-all cursor-pointer group"
                 >
-                  <div className={`size-9 rounded-full ${step.color} flex items-center justify-center text-white flex-shrink-0`}>
-                    <Icon className="size-4.5" />
+                  <div className={`size-6 rounded-full ${step.color} flex items-center justify-center text-white flex-shrink-0`}>
+                    <Icon className="size-3" />
                   </div>
-                  <div className="flex flex-col min-w-0 max-w-[160px]">
-                    <span className="text-sm font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight">
-                      {step.label}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-medium leading-snug truncate">
-                      {step.description}
-                    </span>
-                  </div>
+                  <span className="text-xs font-bold text-foreground group-hover:text-brand-teal transition-colors leading-tight">
+                    {step.label}
+                  </span>
                   {completedUpTo >= i && (
-                    <Check className="size-3.5 text-emerald-500 flex-shrink-0" />
+                    <Check className="size-3 text-emerald-500 flex-shrink-0" />
                   )}
                 </button>
                 {i < STEPS.length - 1 && (
-                  <ArrowRight className="size-4 text-muted-foreground/40 flex-shrink-0" />
+                  <ArrowRight className="size-3 text-muted-foreground/40 flex-shrink-0" />
                 )}
               </Fragment>
             );
@@ -234,7 +229,7 @@ const CONTRACT_TYPES: ContractType[] = [
   {
     id: 'p4p',
     name: 'Pay-for-Performance (P4P)',
-    description: 'Providers receive bonuses or penalties based on predefined quality metrics (e.g., prevention, safety, patient satisfaction).',
+    description: 'You earn bonuses when your patients achieve strong results on predefined quality benchmarks — such as prevention rates, safety scores, or patient satisfaction. Fall short of those benchmarks and your payment is reduced. Your income directly reflects the quality of care you deliver.',
     params: [
       BASE_PAYMENT_PARAM,
       { id: 'metric', label: 'Primary Quality Metric', type: 'select', options: ['Prevention Rate', 'Safety Score', 'Patient Satisfaction', 'Readmission Rate'] },
@@ -246,7 +241,7 @@ const CONTRACT_TYPES: ContractType[] = [
   {
     id: 'shared',
     name: 'Shared Savings / Shared Risk',
-    description: 'Providers are rewarded for delivering high-quality care below a cost target (shared savings) and may absorb losses when costs exceed targets (shared risk). Common in models like ACOs.',
+    description: 'When you keep the total cost of care below an agreed annual target, you share in those savings. Exceed the target and you absorb a portion of the loss. This model gives you a direct financial stake in running an efficient practice — similar to how Accountable Care Organizations operate.',
     params: [
       BASE_PAYMENT_PARAM,
       { id: 'cost_target', label: 'Annual Cost Target', type: 'number', unit: 'CHF', defaultValue: 100000, min: 0 },
@@ -258,7 +253,7 @@ const CONTRACT_TYPES: ContractType[] = [
   {
     id: 'bundled',
     name: 'Bundled Payments',
-    description: 'A single payment covers an entire care episode (e.g., surgery, pregnancy). Providers keep savings if care costs less than the bundle but absorb extra costs from inefficiencies or complications.',
+    description: 'You receive one fixed payment for a complete care episode — such as a surgery or pregnancy. Deliver care efficiently and you keep what remains of the bundle. Complications or inefficiencies come out of your pocket, which makes prevention and clinical precision central to protecting your earnings.',
     params: [
       BASE_PAYMENT_PARAM,
       { id: 'bundle_amount', label: 'Bundle Payment Amount', type: 'number', unit: 'CHF', defaultValue: 25000, min: 0 },
@@ -270,7 +265,7 @@ const CONTRACT_TYPES: ContractType[] = [
   {
     id: 'capitation',
     name: 'Capitation',
-    description: 'Providers receive a fixed payment per patient (e.g., per month) regardless of service usage. Global capitation carries the highest risk and strongly incentivizes prevention and long-term health management.',
+    description: 'You receive a fixed monthly payment for each patient on your panel, regardless of how often they visit or what services they need. The healthier your patients remain, the less care you need to provide — making proactive prevention and long-term health management your most effective financial strategy.',
     params: [
       BASE_PAYMENT_PARAM,
       { id: 'per_patient', label: 'Per-Patient Monthly Payment', type: 'number', unit: 'CHF', defaultValue: 150, min: 0 },
@@ -317,7 +312,7 @@ function PaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-4xl sm:max-w-4xl max-h-[85vh] overflow-y-auto p-8 sm:rounded-xl">
+      <DialogContent className="max-w-[84rem] sm:max-w-[84rem] max-h-[90vh] overflow-y-auto p-12 sm:rounded-xl">
         <DialogHeader className="mb-2">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-full bg-brand-amber flex items-center justify-center text-white flex-shrink-0">
@@ -338,7 +333,7 @@ function PaymentModal({
             <button
               key={ct.id}
               onClick={() => setSelectedId(ct.id)}
-              className={`text-left p-4 rounded-xl border transition-all ${
+              className={`text-left p-6 rounded-xl border transition-all ${
                 selectedId === ct.id
                   ? 'border-brand-amber bg-brand-amber/8 shadow-sm'
                   : 'border-foreground/8 bg-background/60 hover:border-brand-amber/40 hover:bg-brand-amber/4'

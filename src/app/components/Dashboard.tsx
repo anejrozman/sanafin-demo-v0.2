@@ -914,11 +914,8 @@ export default function Dashboard() {
     <div id="overview-section" className="space-y-10 scroll-mt-48">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
+        <div>
           <h1 className="text-4xl font-black tracking-tight">Outcome Dashboard</h1>
-          <p className="text-sm text-muted-foreground font-medium">
-            Click any node in the workflow above to go back and reconfigure that step.
-          </p>
         </div>
         <Badge
           variant={dataSource === 'uploaded' ? 'default' : 'outline'}
