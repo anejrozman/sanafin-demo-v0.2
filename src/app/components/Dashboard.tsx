@@ -246,18 +246,20 @@ function StatTiles({
   );
 }
 
-function PatientRow({ 
-  patient, 
-  evaluation, 
-  daysRemaining, 
-  isOpen, 
-  onToggle 
-}: { 
-  patient: PatientRecord; 
+function PatientRow({
+  patient,
+  evaluation,
+  daysRemaining,
+  isOpen,
+  onToggle,
+  basePayment = 800,
+}: {
+  patient: PatientRecord;
   evaluation: { ruleResults: { ruleId: string; label: string; actual: number | null; unit: string; passed: boolean }[] };
   daysRemaining?: number | null;
   isOpen: boolean;
   onToggle: () => void;
+  basePayment?: number;
 }) {
   const attendanceRate = patient.total_sessions > 0
     ? Math.round((patient.sessions_attended / patient.total_sessions) * 100)
@@ -304,18 +306,18 @@ function PatientRow({
                 <span className="w-fit inline-flex items-center gap-1 bg-brand-amber/10 border border-brand-amber/35 text-brand-amber text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
                   <ShieldAlert className="size-3 shrink-0" />
                   <span>
-                    {daysRemaining != null 
-                      ? `CHF 800 pending clawback in ${daysRemaining}d` 
-                      : `Escrow Clawback: CHF 800`}
+                    {daysRemaining != null
+                      ? `CHF ${basePayment} pending clawback in ${daysRemaining}d`
+                      : `Escrow Clawback: CHF ${basePayment}`}
                   </span>
                 </span>
               ) : (
                 <span className="w-fit inline-flex items-center gap-1 bg-brand-teal/10 border border-brand-teal/35 text-brand-teal text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
                   <CheckCircle2 className="size-3 shrink-0 text-brand-teal" />
                   <span>
-                    {daysRemaining != null 
-                      ? `CHF 800 Escrow Secure` 
-                      : `Escrow Released: CHF 800`}
+                    {daysRemaining != null
+                      ? `CHF ${basePayment} Escrow Secure`
+                      : `Escrow Released: CHF ${basePayment}`}
                   </span>
                 </span>
               )}
@@ -734,52 +736,46 @@ function fmtChf(n: number): string {
 
 function computeCohortFinancials(
   contractType: string,
-  params: Record<string, string | number>,
+  cohort: 'completed' | 'ongoing' | 'combined',
   totalPatients: number,
   passCount: number,
   failCount: number,
 ) {
-  const base = Number(params.base_payment) || 800;
-  const escrow = base * totalPatients;
-  let guaranteed = 0, performanceEarned = 0, performanceLost = 0;
-
   switch (contractType) {
     case 'p4p':
-      guaranteed = 0;
-      performanceEarned = base * passCount;
-      performanceLost = base * (Number(params.penalty || 5) / 100) * failCount;
-      break;
-    case 'shared': {
-      const savPct = Number(params.savings_share || 30) / 100;
-      const riskPct = Number(params.risk_share || 20) / 100;
-      guaranteed = base * Math.max(0, 1 - savPct - riskPct) * totalPatients;
-      performanceEarned = base * savPct * passCount;
-      performanceLost = base * riskPct * failCount;
-      break;
-    }
+      if (cohort === 'completed') return { escrow: 100_000, guaranteed: 80_000, performanceEarned: 11_000, performanceLost:  9_000, net:  82_000 };
+      if (cohort === 'ongoing')   return { escrow: 100_000, guaranteed: 80_000, performanceEarned: 12_000, performanceLost:  8_000, net:  84_000 };
+      /* combined */              return { escrow: 200_000, guaranteed: 160_000, performanceEarned: 23_000, performanceLost: 17_000, net: 166_000 };
+    case 'shared':
+      // CHF 800 guaranteed per patient; CHF 1 500 savings share per passer; CHF 600 risk per failer.
+      return {
+        escrow:           100_000,
+        guaranteed:         800 * totalPatients,
+        performanceEarned: 1_500 * passCount,
+        performanceLost:     600 * failCount,
+        net: 800 * totalPatients + 1_500 * passCount - 600 * failCount,
+      };
     case 'bundled':
-      guaranteed = base * totalPatients;
-      performanceEarned = base * (Number(params.savings_rate || 50) / 100) * passCount;
-      performanceLost = base * (Number(params.risk_threshold || 10) / 100) * failCount;
-      break;
+      // CHF 800 guaranteed per patient; CHF 3 750 bundle savings per passer; CHF 2 500 overrun per failer.
+      return {
+        escrow:           25_000 * totalPatients,
+        guaranteed:          800 * totalPatients,
+        performanceEarned: 3_750 * passCount,
+        performanceLost:   2_500 * failCount,
+        net: 800 * totalPatients + 3_750 * passCount - 2_500 * failCount,
+      };
     case 'capitation':
-      guaranteed = base * totalPatients;
-      performanceEarned = base * (Number(params.prevention_bonus || 5) / 100) * passCount;
-      performanceLost = 0;
-      break;
+      // CHF 2 160 capitation per patient (CHF 150 × 1.2 risk × 12 months); CHF 40 prevention bonus per passer.
+      return {
+        escrow:           2_160 * totalPatients,
+        guaranteed:       2_160 * totalPatients,
+        performanceEarned:   40 * passCount,
+        performanceLost:      0,
+        net: 2_160 * totalPatients + 40 * passCount,
+      };
     default:
-      guaranteed = 0;
-      performanceEarned = 0;
-      performanceLost = 0;
+      return { escrow: 0, guaranteed: 0, performanceEarned: 0, performanceLost: 0, net: 0 };
   }
-
-  return {
-    escrow,
-    guaranteed,
-    performanceEarned,
-    performanceLost,
-    net: guaranteed + performanceEarned - performanceLost,
-  };
 }
 
 const CONTRACT_NAMES: Record<string, string> = {
@@ -853,22 +849,20 @@ export default function Dashboard() {
 
   const completedFin = useMemo(() => {
     if (!contractType) return null;
-    return computeCohortFinancials(contractType, contractParams, completed.length, summary.passed, summary.failed);
+    return computeCohortFinancials(contractType, 'completed', completed.length, summary.passed, summary.failed);
   }, [contractType, contractParams, completed.length, summary.passed, summary.failed]);
 
   const ongoingFin = useMemo(() => {
     if (!contractType) return null;
-    const ongoingTotal = cats.onTrack.length + cats.flagged.length;
-    return computeCohortFinancials(contractType, contractParams, ongoingTotal, cats.onTrack.length, cats.flagged.length);
-  }, [contractType, contractParams, cats.onTrack.length, cats.flagged.length]);
+    return computeCohortFinancials(contractType, 'ongoing', active.length, cats.onTrack.length, cats.flagged.length);
+  }, [contractType, contractParams, active.length, cats.onTrack.length, cats.flagged.length]);
 
   const combinedFin = useMemo(() => {
     if (!contractType) return null;
-    const combinedTotal = completed.length + cats.onTrack.length + cats.flagged.length;
     const combinedPass = summary.passed + cats.onTrack.length;
     const combinedFail = summary.failed + cats.flagged.length;
-    return computeCohortFinancials(contractType, contractParams, combinedTotal, combinedPass, combinedFail);
-  }, [contractType, contractParams, completed.length, summary.passed, summary.failed, cats.onTrack.length, cats.flagged.length]);
+    return computeCohortFinancials(contractType, 'combined', patients.length, combinedPass, combinedFail);
+  }, [contractType, contractParams, patients.length, summary.passed, summary.failed, cats.onTrack.length, cats.flagged.length]);
 
   // Search states
   const [needsReviewSearch, setNeedsReviewSearch] = useState('');
@@ -1053,28 +1047,24 @@ export default function Dashboard() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2">Combined — All Patients</span>
                     <div className="h-px flex-1 bg-foreground/8" />
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                    <div className="space-y-0.5">
+                  <div className="flex flex-wrap justify-center gap-8">
+                    <div className="space-y-0.5 text-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Escrow</span>
                       <span className="text-lg font-black text-foreground">{fmtChf(combinedFin.escrow)}</span>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 text-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Guaranteed</span>
                       <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.guaranteed)}</span>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 text-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Perf. Earned</span>
                       <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.performanceEarned)}</span>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 text-center">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Returned</span>
                       <span className={`text-lg font-black ${combinedFin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'}`}>
                         {fmtChf(combinedFin.performanceLost)}
                       </span>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Net to Provider</span>
-                      <span className="text-lg font-black text-foreground">{fmtChf(combinedFin.net)}</span>
                     </div>
                   </div>
                 </div>
@@ -1158,7 +1148,7 @@ export default function Dashboard() {
                         <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
                           <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
                           <span className="font-black text-xs block text-foreground">
-                            ➔ Release: CHF {(summary.passed * 800).toLocaleString()} to Provider
+                            ➔ Release: {fmtChf((completedFin?.guaranteed ?? 0) + (completedFin?.performanceEarned ?? 0))} to Provider
                           </span>
                         </div>
                       </div>
@@ -1177,7 +1167,7 @@ export default function Dashboard() {
                         <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
                           <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
                           <span className="font-black text-xs block text-foreground">
-                            ➔ Clawback: CHF {(summary.failed * 800).toLocaleString()} to Insurers
+                            ➔ Clawback: {fmtChf(completedFin?.performanceLost ?? 0)} to Insurers
                           </span>
                         </div>
                       </div>
@@ -1233,6 +1223,7 @@ export default function Dashboard() {
                         evaluation={c.evaluation}
                         isOpen={expandedPatientId === c.patient.patient_id}
                         onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                        basePayment={Number(contractParams?.base_payment) || 800}
                       />
                     ))}
                   </div>
@@ -1300,7 +1291,7 @@ export default function Dashboard() {
                           <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Escrow Risk Summary</span>
                           <span className="block">{cats.flagged.length} Patients Off-Track</span>
                           <span className="block text-xs mt-0.5 text-foreground font-black">
-                            ➔ CHF {(cats.flagged.length * 800).toLocaleString()} at Risk
+                            ➔ {fmtChf(ongoingFin?.performanceLost ?? 0)} at Risk
                           </span>
                         </div>
                       </div>
@@ -1321,7 +1312,7 @@ export default function Dashboard() {
                       Active Capital at Risk (Value-at-Risk Framework)
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Active patients not meeting one or more outcome targets, sorted by Value-at-Risk (CHF 800 at risk per patient).
+                      Active patients not meeting one or more outcome targets, sorted by Value-at-Risk (CHF {Number(contractParams?.base_payment) || 800} at risk per patient).
                     </CardDescription>
                   </div>
                   
@@ -1350,6 +1341,7 @@ export default function Dashboard() {
                           daysRemaining={c.daysRemaining}
                           isOpen={expandedPatientId === c.patient.patient_id}
                           onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
+                          basePayment={Number(contractParams?.base_payment) || 800}
                         />
                       ))}
                     </div>
