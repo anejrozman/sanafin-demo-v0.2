@@ -143,11 +143,10 @@ function GoalMetricCard({ label, passRate, isPrimary }: { label: string; passRat
             style={{ width: `${Math.min(passRate, 100)}%`, backgroundColor: barColor }}
           />
         </div>
-        <div className="flex items-center justify-between text-xs font-semibold">
+        <div className="flex items-center text-xs font-semibold">
           <span style={{ color: barColor }}>
             {passing ? '✓ On target' : '⚠ Below threshold'}
           </span>
-          <span className="text-muted-foreground">Target: ≥ 70%</span>
         </div>
       </div>
     </div>
@@ -826,10 +825,6 @@ function CohortFinancials({
         <FinancialCol label="Guaranteed" value={fmtChf(fin.guaranteed)} sub="Fixed portion" accent="text-brand-teal" />
         <FinancialCol label="Performance Earned" value={fmtChf(fin.performanceEarned)} sub="Bonus unlocked" accent="text-brand-teal" />
         <FinancialCol label="Returned to Insurer" value={fmtChf(fin.performanceLost)} sub="Penalties / clawback" accent={fin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'} />
-      </div>
-      <div className="flex items-center gap-3 pt-1 border-t border-foreground/8">
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Net to Provider</span>
-        <span className="text-base font-black text-foreground">{fmtChf(fin.net)}</span>
       </div>
     </div>
   );
