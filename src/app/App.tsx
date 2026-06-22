@@ -10,6 +10,7 @@ import {
 } from './components/ui/sidebar';
 import { Home, CheckCircle2, Activity, Check } from 'lucide-react';
 import { STEPS } from '../lib/workflowSteps';
+import { scrollToId } from '../lib/scroll';
 import sanafinLogo from '../assets/sanafin_logo.png';
 import symbolIcon from '../assets/Symbol_no_bg.png';
 
@@ -55,21 +56,6 @@ const DASHBOARD_SECTIONS = [
   { id: 'completion-section', label: 'Completed',  Icon: CheckCircle2, color: 'text-brand-teal' },
   { id: 'ongoing-section',    label: 'Ongoing',    Icon: Activity,     color: 'text-brand-amber' },
 ] as const;
-
-const HEADER_H = 64;
-
-function getScrollOffset(includeMiniBar = false) {
-  if (!includeMiniBar) return HEADER_H;
-  const bar = document.querySelector('[data-mini-bar]');
-  return HEADER_H + (bar ? bar.getBoundingClientRect().height : 0);
-}
-
-function scrollToId(id: string, includeMiniBar = false) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const offset = getScrollOffset(includeMiniBar);
-  window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset), behavior: 'smooth' });
-}
 
 function AppSidebar() {
   const { state } = useSidebar();

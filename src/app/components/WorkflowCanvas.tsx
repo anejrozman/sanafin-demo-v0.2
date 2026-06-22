@@ -9,6 +9,7 @@ import OutcomeTargets from './OutcomeTargets';
 import Dashboard from './Dashboard';
 import { useData } from '../../store/DataContext';
 import { STEPS } from '../../lib/workflowSteps';
+import { scrollToElement } from '../../lib/scroll';
 
 // ── Mini workflow bar — shown at top of dashboard for reconfiguration ──────────
 
@@ -474,9 +475,7 @@ export default function WorkflowCanvas() {
       const id = setTimeout(() => {
         const el = stepRefs.current[revealedCount - 1];
         if (!el) return;
-        const HEADER_H = 64; // AppHeader h-16
-        const top = el.getBoundingClientRect().top + window.scrollY - HEADER_H;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        scrollToElement(el);
       }, 650);
       return () => clearTimeout(id);
     }
@@ -490,9 +489,7 @@ export default function WorkflowCanvas() {
       setTimeout(() => {
         const el = stepRefs.current[idx];
         if (!el) return;
-        const HEADER_H = 64;
-        const top = el.getBoundingClientRect().top + window.scrollY - HEADER_H;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        scrollToElement(el);
       }, 150);
     }
   }, [view]);
@@ -526,8 +523,7 @@ export default function WorkflowCanvas() {
     setTimeout(() => {
       const el = stepRefs.current[idx];
       if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY - 64;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      scrollToElement(el);
     }, 150);
   }, [view, pendingWorkflowScroll, setPendingWorkflowScroll]);
 

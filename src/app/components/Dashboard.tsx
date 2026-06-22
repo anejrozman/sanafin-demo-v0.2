@@ -10,6 +10,7 @@ import {
   type ClassifiedPatient,
 } from '../../lib/selectors';
 import { type PatientRecord } from '../../lib/schema';
+import { scrollToId } from '../../lib/scroll';
 
 
 function fmt(v: number | null | undefined, decimals = 1): string {
@@ -891,14 +892,6 @@ export default function Dashboard() {
     c.unmetTargetLabels.some(label => label.toLowerCase().includes(flaggedSearch.toLowerCase()))
   );
 
-  function scrollToId(id: string) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const bar = document.querySelector('[data-mini-bar]');
-    const offset = 64 + (bar ? bar.getBoundingClientRect().height : 0);
-    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset), behavior: 'smooth' });
-  }
-
   return (
     <div id="overview-section" className="space-y-10 scroll-mt-48">
       {/* Header */}
@@ -996,7 +989,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {completedFin && (
                   <button
-                    onClick={() => scrollToId('completion-section')}
+                    onClick={() => scrollToId('completion-section', true)}
                     className="text-left rounded-xl border border-brand-teal/20 bg-brand-teal/4 hover:bg-brand-teal/8 hover:border-brand-teal/35 transition-all p-5 group/card"
                   >
                     <CohortFinancials
@@ -1015,7 +1008,7 @@ export default function Dashboard() {
                 )}
                 {ongoingFin && (
                   <button
-                    onClick={() => scrollToId('ongoing-section')}
+                    onClick={() => scrollToId('ongoing-section', true)}
                     className="text-left rounded-xl border border-brand-amber/20 bg-brand-amber/4 hover:bg-brand-amber/8 hover:border-brand-amber/35 transition-all p-5 group/card"
                   >
                     <CohortFinancials
