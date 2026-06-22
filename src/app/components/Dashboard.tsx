@@ -832,7 +832,7 @@ function CohortFinancials({
 }
 
 export default function Dashboard() {
-  const { patients, thresholds, dataSource, isLoading, contractType, contractParams } = useData();
+  const { patients, thresholds, isLoading, contractType, contractParams } = useData();
 
   const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
   const { completed, active } = useMemo(() => partitionByStatus(patients, asOf), [patients, asOf]);
@@ -895,16 +895,8 @@ export default function Dashboard() {
   return (
     <div id="overview-section" className="space-y-10 scroll-mt-48">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight">Outcome Dashboard</h1>
-        </div>
-        <Badge
-          variant={dataSource === 'uploaded' ? 'default' : 'outline'}
-          className="mt-1 flex-shrink-0 text-xs px-3 py-1 font-semibold rounded-full"
-        >
-          {dataSource === 'uploaded' ? 'Uploaded Cohort' : 'Sample Dataset'}
-        </Badge>
+      <div>
+        <h1 className="text-4xl font-black tracking-tight">Outcome Dashboard</h1>
       </div>
 
       {/* Overview section title */}

@@ -8,7 +8,7 @@ import {
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarProvider, SidebarTrigger, useSidebar,
 } from './components/ui/sidebar';
-import { Home, CheckCircle2, Activity, Check } from 'lucide-react';
+import { Home, CheckCircle2, Activity, Check, FlaskConical, Upload } from 'lucide-react';
 import { STEPS } from '../lib/workflowSteps';
 import { scrollToId } from '../lib/scroll';
 import sanafinLogo from '../assets/sanafin_logo.png';
@@ -62,6 +62,7 @@ function AppSidebar() {
   const isCollapsed = state === 'collapsed';
 
   const {
+    dataSource,
     animationSeen,
     workflowView,
     setWorkflowView,
@@ -200,6 +201,21 @@ function AppSidebar() {
 
       {!isCollapsed && (
         <SidebarFooter className="px-5 py-4 bg-muted/10">
+          {workflowCompletedUpTo >= 1 && (
+            <div className={`flex items-center w-full px-2.5 py-1 rounded-full text-[10px] font-semibold mb-2 ${
+              dataSource === 'uploaded'
+                ? 'bg-brand-teal/10 text-brand-teal'
+                : 'bg-muted text-muted-foreground'
+            }`}>
+              {dataSource === 'uploaded'
+                ? <Upload className="size-2.5 shrink-0" />
+                : <FlaskConical className="size-2.5 shrink-0" />
+              }
+              <span className="flex-1 text-center">
+                {dataSource === 'uploaded' ? 'You are using your own dataset' : 'You are using the sample dataset'}
+              </span>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground font-semibold">Sanafin Outcome Studio</p>
           <p className="text-[10px] text-muted-foreground/75">Version 0.3</p>
         </SidebarFooter>
