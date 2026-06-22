@@ -217,7 +217,7 @@ function AppSidebar() {
             </div>
           )}
           <p className="text-xs text-muted-foreground font-semibold">Sanafin Outcome Studio</p>
-          <p className="text-[10px] text-muted-foreground/75">Version 0.3</p>
+          <p className="text-[10px] text-muted-foreground/75">Version 0.4</p>
         </SidebarFooter>
       )}
     </Sidebar>
