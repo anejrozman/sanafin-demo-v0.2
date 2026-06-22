@@ -204,9 +204,11 @@ export function getAsOfDate(patients: PatientRecord[]): string | null {
   );
 }
 
-/** A patient whose program end_date has passed the asOf date is "completed"; otherwise "active". */
+/** Read program status from the record's own field; fall back to date comparison when end_date is available. */
 export function getProgramStatus(patient: PatientRecord, asOf: string): ProgramStatus {
-  return patient.end_date <= asOf ? 'completed' : 'active';
+  if (patient.program_status) return patient.program_status;
+  if (patient.end_date) return patient.end_date <= asOf ? 'completed' : 'active';
+  return 'active';
 }
 
 export function getStatusCounts(
@@ -263,7 +265,7 @@ export function classifyCohort(
         : evaluation.passed ? 'on_track' : 'flagged';
 
     const daysRemaining =
-      status === 'active'
+      status === 'active' && patient.end_date
         ? Math.max(0, Math.round(
             (new Date(patient.end_date).getTime() - new Date(asOf + 'T00:00:00').getTime()) /
             (1000 * 60 * 60 * 24),
