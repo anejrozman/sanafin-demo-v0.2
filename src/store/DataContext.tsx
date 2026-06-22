@@ -14,11 +14,24 @@ interface DataState {
   isLoading: boolean;
   processed: boolean;
   animationSeen: boolean;
+  // Workflow navigation state — written by WorkflowCanvas, read by AppSidebar
+  workflowView: 'workflow' | 'dashboard';
+  workflowRevealedCount: number;
+  workflowCompletedUpTo: number;
+  pendingWorkflowScroll: number | null;
+  // Payment contract — set when user confirms the PaymentModal
+  contractType: string | null;
+  contractParams: Record<string, string | number>;
   setUploadedPatients: (patients: PatientRecord[]) => void;
   clearUploadedData: () => void;
   setThresholds: (t: Thresholds) => void;
   setProcessed: (v: boolean) => void;
   setAnimationSeen: (v: boolean) => void;
+  setWorkflowView: (v: 'workflow' | 'dashboard') => void;
+  setWorkflowRevealedCount: (n: number) => void;
+  setWorkflowCompletedUpTo: (n: number) => void;
+  setPendingWorkflowScroll: (i: number | null) => void;
+  setContractConfig: (type: string, params: Record<string, string | number>) => void;
 }
 
 const DataContext = createContext<DataState | null>(null);
@@ -53,6 +66,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const sampleCacheRef = useRef<PatientRecord[] | null>(null);
 
+  // Workflow nav state shared with sidebar
+  const [workflowView, setWorkflowViewState] = useState<'workflow' | 'dashboard'>('workflow');
+  const [workflowRevealedCount, setWorkflowRevealedCount] = useState(1);
+  const [workflowCompletedUpTo, setWorkflowCompletedUpTo] = useState(-1);
+  const [pendingWorkflowScroll, setPendingWorkflowScroll] = useState<number | null>(null);
+
+  // Payment contract config — saved when user confirms the PaymentModal
+  const [contractType, setContractTypeState] = useState<string | null>(null);
+  const [contractParams, setContractParamsState] = useState<Record<string, string | number>>({});
+
   useEffect(() => {
     const storedSource = localStorage.getItem(LS_DATA_SOURCE) as 'uploaded' | null;
     const storedPatients = localStorage.getItem(LS_PATIENTS);
@@ -82,6 +105,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const setProcessed = (v: boolean) => setProcessedState(v);
   const setAnimationSeen = (v: boolean) => setAnimationSeenState(v);
+  const setWorkflowView = (v: 'workflow' | 'dashboard') => setWorkflowViewState(v);
+  const setContractConfig = (type: string, params: Record<string, string | number>) => {
+    setContractTypeState(type);
+    setContractParamsState(params);
+  };
 
   const setUploadedPatients = (newPatients: PatientRecord[]) => {
     setPatients(newPatients);
@@ -122,7 +150,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider
       value={{
         patients, dataSource, thresholds, isLoading, processed, animationSeen,
+        workflowView, workflowRevealedCount, workflowCompletedUpTo, pendingWorkflowScroll,
+        contractType, contractParams,
         setUploadedPatients, clearUploadedData, setThresholds, setProcessed, setAnimationSeen,
+        setWorkflowView, setWorkflowRevealedCount, setWorkflowCompletedUpTo, setPendingWorkflowScroll,
+        setContractConfig,
       }}
     >
       {children}

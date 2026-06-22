@@ -1,191 +1,256 @@
-import { BrowserRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router';
-import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider,
-  SidebarTrigger, useSidebar,
-} from './components/ui/sidebar';
-import { Button } from './components/ui/button';
+import { useEffect } from 'react';
+import { useData } from '../store/DataContext';
+import WorkflowCanvas from './components/WorkflowCanvas';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
-import { Home, FileText, Users, Target, Upload, HelpCircle, SlidersHorizontal } from 'lucide-react';
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarProvider, SidebarTrigger, useSidebar,
+} from './components/ui/sidebar';
+import { Home, CheckCircle2, Activity, Check, FlaskConical, Upload } from 'lucide-react';
+import { STEPS } from '../lib/workflowSteps';
+import { scrollToId } from '../lib/scroll';
 import sanafinLogo from '../assets/sanafin_logo.png';
 import symbolIcon from '../assets/Symbol_no_bg.png';
-import Dashboard from './components/Dashboard';
-import OutcomeReports from './components/OutcomeReports';
-import CohortAnalysis from './components/CohortAnalysis';
-import ContractPerformance from './components/ContractPerformance';
-import DataUpload from './components/DataUpload';
-import OutcomeTargets from './components/OutcomeTargets';
-import WelcomePage, { useWelcomeModal } from './components/WelcomeModal';
 
-/* MARKER-MAKE-KIT-INVOKED */
+// ── AppHeader ─────────────────────────────────────────────────────────────────
 
-const navGroups = [
-  {
-    label: 'Overview',
-    items: [
-      { name: 'Dashboard', href: '/', icon: Home },
-    ],
-  },
-  {
-    label: 'Run',
-    items: [
-      { name: 'Data Upload', href: '/upload', icon: Upload, anchor: true },
-      { name: 'Outcome Targets', href: '/targets', icon: SlidersHorizontal },
-    ],
-  },
-  {
-    label: 'Results',
-    items: [
-      { name: 'Outcome Reports', href: '/reports', icon: FileText },
-      { name: 'Cohort Analysis', href: '/cohort', icon: Users },
-      { name: 'Contract Performance', href: '/contract', icon: Target },
-    ],
-  },
-];
+function AppHeader() {
+  return (
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 items-center justify-between px-8">
+        <span className="hidden md:inline-block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Sanafin Outcome Studio
+        </span>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Avatar className="size-8 cursor-pointer hover:ring-2 hover:ring-ring transition-all">
+                <AvatarFallback className="bg-brand-teal text-white text-xs font-semibold">U</AvatarFallback>
+              </Avatar>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[18rem] p-6" align="end">
+            <div className="flex items-center gap-4">
+              <Avatar className="size-12">
+                <AvatarFallback className="bg-brand-teal text-white text-sm font-semibold">U</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">Demo Auditor</span>
+                <span className="text-xs text-muted-foreground">auditor@sanafin.com</span>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </header>
+  );
+}
+
+// ── AppSidebar ────────────────────────────────────────────────────────────────
+
+const DASHBOARD_SECTIONS = [
+  { id: 'overview-section',   label: 'Overview',   Icon: Home,         color: 'text-brand-teal' },
+  { id: 'completion-section', label: 'Completed',  Icon: CheckCircle2, color: 'text-brand-teal' },
+  { id: 'ongoing-section',    label: 'Ongoing',    Icon: Activity,     color: 'text-brand-amber' },
+] as const;
 
 function AppSidebar() {
-  const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
 
+  const {
+    dataSource,
+    animationSeen,
+    workflowView,
+    setWorkflowView,
+    workflowRevealedCount,
+    workflowCompletedUpTo,
+    setPendingWorkflowScroll,
+  } = useData();
+
+  function handleWorkflowNodeClick(i: number) {
+    if (workflowView !== 'workflow') {
+      setPendingWorkflowScroll(i);
+      setWorkflowView('workflow');
+    } else {
+      scrollToId(STEPS[i].id);
+    }
+  }
+
+  function handleDashboardSectionClick(id: string) {
+    if (!animationSeen) return;
+    if (workflowView !== 'dashboard') {
+      // Switch back to dashboard (view-only navigation), then scroll after render
+      setWorkflowView('dashboard');
+      setTimeout(() => scrollToId(id, true), 250);
+    } else {
+      scrollToId(id, true);
+    }
+  }
+
+  // Dashboard links stay active as long as the user has completed the workflow
+  // at least once (animationSeen). They only go grey if the user goes back to
+  // actively change a step via the MiniWorkflowBar (which resets animationSeen).
+  const dashboardEnabled = animationSeen;
+
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className={`h-16 border-b flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-3'}`}>
+    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
+      <SidebarHeader className={`h-16 flex items-center justify-center ${isCollapsed ? 'px-0' : 'px-3'}`}>
         {isCollapsed ? (
-          <img src={symbolIcon} alt="SanaFin" className="h-12 w-12 object-contain" />
+          <img src={symbolIcon} alt="SanaFin" className="h-8 w-8 object-contain" />
         ) : (
-          <div className="flex w-full items-center justify-between px-2">
-            <img src={sanafinLogo} alt="SanaFin" className="h-12 w-auto" />
-            <SidebarTrigger className="size-10 [&_svg]:size-5" />
+          <div className="flex w-full items-center justify-center px-2">
+            <img src={sanafinLogo} alt="SanaFin" className="h-12 w-auto object-contain" />
           </div>
         )}
       </SidebarHeader>
+
       <SidebarContent>
         {isCollapsed && (
-          <div className="flex justify-center pt-2">
-            <SidebarTrigger className="size-10 [&_svg]:size-5" />
+          <div className="flex justify-center pt-1">
+            <SidebarTrigger className="size-11 [&_svg]:size-5" />
           </div>
         )}
-        {navGroups.map(group => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map(item => {
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.href;
-                  const isAnchor = (item as { anchor?: boolean }).anchor;
-                  return (
-                    <SidebarMenuItem
-                      key={item.name}
-                      className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center"
+
+        {/* ── Section 1: Clinical Workflow ─────────────────────────────── */}
+        <SidebarGroup>
+          {!isCollapsed ? (
+            <SidebarGroupLabel className="flex w-full items-center justify-between pr-0">
+              <span className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground/85">
+                SanaFin Workflow
+              </span>
+              <SidebarTrigger className="size-11 [&_svg]:size-5 shrink-0 text-muted-foreground/80 hover:text-foreground transition-colors" />
+            </SidebarGroupLabel>
+          ) : (
+            <SidebarGroupLabel>WF</SidebarGroupLabel>
+          )}
+
+          <SidebarGroupContent className="mt-1">
+            <SidebarMenu>
+              {STEPS.slice(0, workflowRevealedCount).map((step, i) => {
+                const Icon = step.Icon;
+                const done = workflowCompletedUpTo >= i;
+                return (
+                  <SidebarMenuItem
+                    key={step.id}
+                    className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center"
+                  >
+                    <SidebarMenuButton
+                      onClick={() => handleWorkflowNodeClick(i)}
+                      className="cursor-pointer group-data-[collapsible=icon]:size-8!"
+                      title={step.label}
                     >
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        className="[&>svg]:size-4 group-data-[collapsible=icon]:size-8!"
-                      >
-                        <Link to={item.href} className="flex items-center gap-3">
-                          <Icon className={isAnchor ? 'text-primary' : undefined} />
-                          <span>{item.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                      <div className={`size-5 rounded-full ${step.color} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className="size-2.5 text-white" />
+                      </div>
+                      <span className="font-bold text-xs truncate flex-1 min-w-0">{step.label}</span>
+                      {done && !isCollapsed && (
+                        <Check className="size-3 text-emerald-500 flex-shrink-0 ml-auto" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Visual separator */}
+        {!isCollapsed && <div className="mx-3 my-0.5 h-px bg-foreground/8" />}
+
+        {/* ── Section 2: Dashboard ─────────────────────────────────────── */}
+        <SidebarGroup>
+          {!isCollapsed && (
+            <SidebarGroupLabel>
+              <span className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground/85">
+                Dashboard
+              </span>
+            </SidebarGroupLabel>
+          )}
+          {isCollapsed && <SidebarGroupLabel>DB</SidebarGroupLabel>}
+
+          <SidebarGroupContent className="mt-1">
+            <SidebarMenu>
+              {DASHBOARD_SECTIONS.map(section => {
+                const Icon = section.Icon;
+                return (
+                  <SidebarMenuItem
+                    key={section.id}
+                    className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center"
+                  >
+                    <SidebarMenuButton
+                      onClick={() => handleDashboardSectionClick(section.id)}
+                      className={`group-data-[collapsible=icon]:size-8! transition-opacity ${
+                        dashboardEnabled ? 'cursor-pointer' : 'opacity-35 cursor-not-allowed pointer-events-none'
+                      }`}
+                      title={section.label}
+                    >
+                      <Icon className={`${section.color} size-4 shrink-0`} />
+                      <span className="font-bold text-xs">{section.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
+
       {!isCollapsed && (
-        <SidebarFooter className="px-5 py-4">
-          <p className="text-xs text-muted-foreground">Sanafin Demo Version 0.2</p>
+        <SidebarFooter className="px-5 py-4 bg-muted/10">
+          {workflowCompletedUpTo >= 1 && (
+            <div className={`flex items-center w-full px-2.5 py-1 rounded-full text-[10px] font-semibold mb-2 ${
+              dataSource === 'uploaded'
+                ? 'bg-brand-teal/10 text-brand-teal'
+                : 'bg-muted text-muted-foreground'
+            }`}>
+              {dataSource === 'uploaded'
+                ? <Upload className="size-2.5 shrink-0" />
+                : <FlaskConical className="size-2.5 shrink-0" />
+              }
+              <span className="flex-1 text-center">
+                {dataSource === 'uploaded' ? 'You are using your own dataset' : 'You are using the sample dataset'}
+              </span>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground font-semibold">Sanafin Outcome Studio</p>
+          <p className="text-[10px] text-muted-foreground/75">Version 0.4</p>
         </SidebarFooter>
       )}
     </Sidebar>
   );
 }
 
-function AppHeader({ onHowItWorks }: { onHowItWorks: () => void }) {
-  return (
-    <div className="sticky top-0 z-10 flex h-16 items-center justify-end gap-3 px-6 border-b bg-background/95 backdrop-blur">
-      <Button variant="ghost" size="sm" onClick={onHowItWorks} className="gap-1.5 text-muted-foreground">
-        <HelpCircle className="size-4" />
-        How it works
-      </Button>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Avatar className="size-8 cursor-pointer hover:ring-2 hover:ring-ring transition-all">
-              <AvatarFallback className="bg-brand-teal text-white text-xs font-semibold">U</AvatarFallback>
-            </Avatar>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[28rem] p-8" align="end">
-          <div className="flex items-center gap-6">
-            <Avatar className="size-20">
-              <AvatarFallback className="bg-brand-teal text-white text-xl font-semibold">U</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col gap-1">
-              <span className="text-lg font-semibold">Username</span>
-              <span className="text-sm text-muted-foreground">demo@sanafin.com</span>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
+// ── AppShell ──────────────────────────────────────────────────────────────────
 
 function AppShell() {
-  const { open, close, reopen } = useWelcomeModal();
-  const navigate = useNavigate();
-
-  const handleStartUpload = () => {
-    close();
-    navigate('/upload', { state: { initialTab: 'sample' } });
-  };
-
-  const handleGoToUpload = () => {
-    close();
-    navigate('/upload', { state: { initialTab: 'upload' } });
-  };
-
-  const handleGoToDashboard = () => {
-    close();
-    navigate('/');
-  };
+  // Radix UI Dialog components sometimes fail to clean up scroll locks.
+  // This guarantees body scrolling stays enabled at all times.
+  useEffect(() => {
+    document.body.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.pointerEvents = 'auto';
+    document.documentElement.style.overflow = 'auto';
+  }, []);
 
   return (
-    <SidebarProvider style={{ "--sidebar-width-icon": "4rem" } as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+    <SidebarProvider style={{ '--sidebar-width-icon': '4rem' } as React.CSSProperties}>
+      <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <AppHeader onHowItWorks={reopen} />
-          <main className="flex-1 overflow-auto bg-background">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/reports" element={<OutcomeReports />} />
-              <Route path="/cohort" element={<CohortAnalysis />} />
-              <Route path="/contract" element={<ContractPerformance />} />
-              <Route path="/upload" element={<DataUpload />} />
-              <Route path="/targets" element={<OutcomeTargets />} />
-            </Routes>
+        <div className="flex flex-col flex-1 min-w-0 bg-background">
+          <AppHeader />
+          <main className="flex-1 ambient-bg-glow relative">
+            <WorkflowCanvas />
           </main>
         </div>
       </div>
-      <WelcomePage open={open} onStartUpload={handleStartUpload} onGoToUpload={handleGoToUpload} onGoToDashboard={handleGoToDashboard} />
     </SidebarProvider>
   );
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <AppShell />
-    </BrowserRouter>
-  );
+  return <AppShell />;
 }

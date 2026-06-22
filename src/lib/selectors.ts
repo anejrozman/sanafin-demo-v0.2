@@ -73,6 +73,7 @@ function applyOperator(
     case '<=': return actual <= target;
     case '>':  return actual > target;
     case '<':  return actual < target;
+    case '=':  return Math.abs(actual - target) < 0.0001;
   }
 }
 
@@ -188,65 +189,7 @@ export function getRulePerformance(
   });
 }
 
-// ─── Patient status breakdown ─────────────────────────────────────────────────
 
-export type PatientStatusBreakdown = {
-  meetingAll: number;
-  partial: number;
-  meetingNone: number;
-  total: number;
-};
-
-export function getPatientStatusBreakdown(
-  patients: PatientRecord[],
-  thresholds: Thresholds,
-): PatientStatusBreakdown {
-  const evaluations = evaluateCohort(patients, thresholds);
-  const enabledCount = thresholds.rules.filter(r => r.enabled).length;
-  let meetingAll = 0, partial = 0, meetingNone = 0;
-
-  for (const e of evaluations) {
-    const met = e.ruleResults.filter(r => r.passed).length;
-    if (enabledCount === 0 || met === enabledCount) {
-      meetingAll++;
-    } else if (met === 0) {
-      meetingNone++;
-    } else {
-      partial++;
-    }
-  }
-
-  return { meetingAll, partial, meetingNone, total: evaluations.length };
-}
-
-// ─── Attention patients ────────────────────────────────────────────────────────
-
-export type AttentionPatient = {
-  patientId: string;
-  rulesMet: number;
-  rulesTotal: number;
-  unmetTargetLabels: string[];
-};
-
-export function getAttentionPatients(
-  patients: PatientRecord[],
-  thresholds: Thresholds,
-  limit = 5,
-): AttentionPatient[] {
-  const enabledCount = thresholds.rules.filter(r => r.enabled).length;
-  if (enabledCount === 0) return [];
-
-  return evaluateCohort(patients, thresholds)
-    .map(e => ({
-      patientId: e.patientId,
-      rulesMet: e.ruleResults.filter(r => r.passed).length,
-      rulesTotal: enabledCount,
-      unmetTargetLabels: e.ruleResults.filter(r => !r.passed).map(r => r.label),
-    }))
-    .filter(a => a.rulesMet < a.rulesTotal)
-    .sort((a, b) => a.rulesMet - b.rulesMet)
-    .slice(0, limit);
-}
 
 // ─── Program status helpers ───────────────────────────────────────────────────
 
@@ -261,9 +204,11 @@ export function getAsOfDate(patients: PatientRecord[]): string | null {
   );
 }
 
-/** A patient whose program end_date has passed the asOf date is "completed"; otherwise "active". */
+/** Read program status from the record's own field; fall back to date comparison when end_date is available. */
 export function getProgramStatus(patient: PatientRecord, asOf: string): ProgramStatus {
-  return patient.end_date <= asOf ? 'completed' : 'active';
+  if (patient.program_status) return patient.program_status;
+  if (patient.end_date) return patient.end_date <= asOf ? 'completed' : 'active';
+  return 'active';
 }
 
 export function getStatusCounts(
@@ -291,13 +236,7 @@ export function partitionByStatus(
   return { completed, active };
 }
 
-/** Mean of sessions_attended / total_sessions × 100 across the subset; guards against /0. */
-export function getAvgSessionCompletion(patients: PatientRecord[]): number | null {
-  const valid = patients.filter(p => p.total_sessions > 0);
-  if (valid.length === 0) return null;
-  const sum = valid.reduce((s, p) => s + (p.sessions_attended / p.total_sessions) * 100, 0);
-  return sum / valid.length;
-}
+
 
 // ─── 2×2 patient classification ───────────────────────────────────────────────
 
@@ -310,17 +249,6 @@ export interface ClassifiedPatient {
   daysRemaining: number | null;       // days from asOf to end_date for active; null if completed
   unmetTargetLabels: string[];
   targetGaps: { label: string; gap: number; unit: string }[];
-}
-
-export function classifyPatient(
-  patient: PatientRecord,
-  thresholds: Thresholds,
-  asOf: string,
-): PatientCategory {
-  const evaluation = evaluatePatient(patient, thresholds);
-  const status = getProgramStatus(patient, asOf);
-  if (status === 'completed') return evaluation.passed ? 'pass' : 'fail';
-  return evaluation.passed ? 'on_track' : 'flagged';
 }
 
 export function classifyCohort(
@@ -337,7 +265,7 @@ export function classifyCohort(
         : evaluation.passed ? 'on_track' : 'flagged';
 
     const daysRemaining =
-      status === 'active'
+      status === 'active' && patient.end_date
         ? Math.max(0, Math.round(
             (new Date(patient.end_date).getTime() - new Date(asOf + 'T00:00:00').getTime()) /
             (1000 * 60 * 60 * 24),
@@ -371,46 +299,5 @@ export function getByCategory(classified: ClassifiedPatient[]): {
     fail: classified.filter(c => c.category === 'fail'),
     onTrack: classified.filter(c => c.category === 'on_track'),
     flagged: classified.filter(c => c.category === 'flagged'),
-  };
-}
-
-/** Flagged active patients sorted by daysRemaining ASC (nearest end first). */
-export function getFlaggedSorted(classified: ClassifiedPatient[]): ClassifiedPatient[] {
-  return classified
-    .filter(c => c.category === 'flagged')
-    .sort((a, b) => {
-      if (a.daysRemaining === null) return 1;
-      if (b.daysRemaining === null) return -1;
-      return a.daysRemaining - b.daysRemaining;
-    });
-}
-
-// ─── Enrollment span ─────────────────────────────────────────────────────────
-
-export type EnrollmentSpan = {
-  earliestEnrollment: string;  // ISO date of first enrolled patient
-  latestMeasurement: string;   // ISO date of most recent measurement
-  avgProgramDays: number;      // avg days between enrollment and last measurement
-};
-
-export function getEnrollmentSpan(patients: PatientRecord[]): EnrollmentSpan | null {
-  if (patients.length === 0) return null;
-
-  let earliestEnrollment = patients[0].enrollment_date;
-  let latestMeasurement = patients[0].last_measurement_date;
-  let totalDays = 0;
-
-  for (const p of patients) {
-    if (p.enrollment_date < earliestEnrollment) earliestEnrollment = p.enrollment_date;
-    if (p.last_measurement_date > latestMeasurement) latestMeasurement = p.last_measurement_date;
-    const enroll = new Date(p.enrollment_date).getTime();
-    const meas = new Date(p.last_measurement_date).getTime();
-    totalDays += (meas - enroll) / (1000 * 60 * 60 * 24);
-  }
-
-  return {
-    earliestEnrollment,
-    latestMeasurement,
-    avgProgramDays: Math.round(totalDays / patients.length),
   };
 }

@@ -121,6 +121,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: 'Outfit', sans-serif;
 }
 
 @layer base {
@@ -129,7 +130,10 @@
   }
 
   body {
+    font-family: 'Outfit', sans-serif;
     @apply bg-background text-foreground;
+    overflow-y: auto !important;
+    height: auto !important;
   }
 
   /**
@@ -139,6 +143,8 @@
 
   html {
     font-size: var(--font-size);
+    overflow-y: auto !important;
+    height: auto !important;
   }
 
   h1 {
@@ -183,3 +189,173 @@
     line-height: 1.5;
   }
 }
+
+/* ── SanaFin Custom Premium UI/UX Design System ── */
+
+/* Dot Grid Pattern */
+.bg-dot-grid {
+  background-image: radial-gradient(rgba(85, 180, 166, 0.12) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Glassmorphism panels */
+.glass-panel {
+  background: rgba(253, 248, 244, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(85, 180, 166, 0.15);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.02),
+    0 10px 15px -3px rgba(85, 180, 166, 0.03),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+}
+
+.dark .glass-panel {
+  background: rgba(20, 20, 20, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 10px 15px -3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Interactive card hover glow */
+.hover-glass-card {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-glass-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgba(85, 180, 166, 0.35);
+  box-shadow: 
+    0 20px 25px -5px rgba(85, 180, 166, 0.08),
+    0 0 30px 2px rgba(85, 180, 166, 0.05);
+}
+
+/* Glowing borders and drop-shadows */
+.glow-teal-sm {
+  filter: drop-shadow(0 0 4px rgba(85, 180, 166, 0.3));
+}
+.glow-teal-md {
+  filter: drop-shadow(0 0 8px rgba(85, 180, 166, 0.5));
+}
+.glow-amber-md {
+  filter: drop-shadow(0 0 8px rgba(233, 162, 59, 0.5));
+}
+.glow-indigo-md {
+  filter: drop-shadow(0 0 8px rgba(129, 140, 248, 0.5));
+}
+
+/* Ambient backgrounds */
+.ambient-bg-glow {
+  position: relative;
+  /* overflow:clip clips the ambient gradient pseudo-elements without creating a
+     scroll container — overflow:hidden would break position:sticky in children */
+  overflow: clip;
+}
+.ambient-bg-glow::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -5%;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(85, 180, 166, 0.08) 0%, transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 0;
+}
+.ambient-bg-glow::after {
+  content: '';
+  position: absolute;
+  bottom: -15%;
+  left: -5%;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(233, 162, 59, 0.05) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SVG Connector Path animations */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+.connector-dash-flow {
+  stroke-dasharray: 8, 8;
+  animation: dash-flow 2s infinite linear;
+}
+
+/* Dynamic glowing node border pulse */
+@keyframes pulse-ring-teal {
+  0% {
+    box-shadow: 0 0 0 0 rgba(85, 180, 166, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(85, 180, 166, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(85, 180, 166, 0);
+  }
+}
+.pulse-ring-teal-active {
+  animation: pulse-ring-teal 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulse-ring-violet {
+  0% {
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+  }
+}
+.pulse-ring-violet-active {
+  animation: pulse-ring-violet 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulse-ring-emerald {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+.pulse-ring-emerald-active {
+  animation: pulse-ring-emerald 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+/* Sparkline Glow hover */
+.sparkline-glow {
+  filter: drop-shadow(0 2px 4px var(--color-brand-teal));
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(85, 180, 166, 0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(85, 180, 166, 0.4);
+}
+
