@@ -1,13 +1,5 @@
 /**
  * Core data contract for SanaFin patient records.
- *
- * Field-name notes vs. WorkflowView.tsx (for later refactor):
- *   WorkflowView `id`            → `patient_id`
- *   WorkflowView `hba1c_baseline`→ `baseline_hba1c`  (word order flipped)
- *   WorkflowView `hba1c_followup`→ `latest_hba1c`    (renamed: "followup" → "latest")
- *   WorkflowView `cgm_tir`       → `cgm_time_in_range` (abbreviation expanded)
- *   WorkflowView `date`          → split into `enrollment_date` + `last_measurement_date`
- *   New fields (no WV equivalent): `baseline_weight_kg`, `latest_weight_kg`, `sessions_attended`
  */
 
 export type PatientRecord = {
