@@ -249,17 +249,6 @@ export interface ClassifiedPatient {
   targetGaps: { label: string; gap: number; unit: string }[];
 }
 
-export function classifyPatient(
-  patient: PatientRecord,
-  thresholds: Thresholds,
-  asOf: string,
-): PatientCategory {
-  const evaluation = evaluatePatient(patient, thresholds);
-  const status = getProgramStatus(patient, asOf);
-  if (status === 'completed') return evaluation.passed ? 'pass' : 'fail';
-  return evaluation.passed ? 'on_track' : 'flagged';
-}
-
 export function classifyCohort(
   patients: PatientRecord[],
   thresholds: Thresholds,
@@ -308,46 +297,5 @@ export function getByCategory(classified: ClassifiedPatient[]): {
     fail: classified.filter(c => c.category === 'fail'),
     onTrack: classified.filter(c => c.category === 'on_track'),
     flagged: classified.filter(c => c.category === 'flagged'),
-  };
-}
-
-/** Flagged active patients sorted by daysRemaining ASC (nearest end first). */
-export function getFlaggedSorted(classified: ClassifiedPatient[]): ClassifiedPatient[] {
-  return classified
-    .filter(c => c.category === 'flagged')
-    .sort((a, b) => {
-      if (a.daysRemaining === null) return 1;
-      if (b.daysRemaining === null) return -1;
-      return a.daysRemaining - b.daysRemaining;
-    });
-}
-
-// ─── Enrollment span ─────────────────────────────────────────────────────────
-
-export type EnrollmentSpan = {
-  earliestEnrollment: string;  // ISO date of first enrolled patient
-  latestMeasurement: string;   // ISO date of most recent measurement
-  avgProgramDays: number;      // avg days between enrollment and last measurement
-};
-
-export function getEnrollmentSpan(patients: PatientRecord[]): EnrollmentSpan | null {
-  if (patients.length === 0) return null;
-
-  let earliestEnrollment = patients[0].enrollment_date;
-  let latestMeasurement = patients[0].last_measurement_date;
-  let totalDays = 0;
-
-  for (const p of patients) {
-    if (p.enrollment_date < earliestEnrollment) earliestEnrollment = p.enrollment_date;
-    if (p.last_measurement_date > latestMeasurement) latestMeasurement = p.last_measurement_date;
-    const enroll = new Date(p.enrollment_date).getTime();
-    const meas = new Date(p.last_measurement_date).getTime();
-    totalDays += (meas - enroll) / (1000 * 60 * 60 * 24);
-  }
-
-  return {
-    earliestEnrollment,
-    latestMeasurement,
-    avgProgramDays: Math.round(totalDays / patients.length),
   };
 }
