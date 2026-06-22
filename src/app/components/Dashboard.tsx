@@ -11,10 +11,24 @@ import {
 } from '../../lib/selectors';
 import { type PatientRecord } from '../../lib/schema';
 import { scrollToId } from '../../lib/scroll';
+import {
+  parseContract, computeContractReport,
+  type ContractReport,
+  type P4PCohortMetrics,
+  type SharedCohortMetrics,
+  type BundledCohortMetrics,
+  type CapitationCohortMetrics,
+} from '../../lib/payouts';
+
 
 
 function fmt(v: number | null | undefined, decimals = 1): string {
   return (v != null && isFinite(v)) ? v.toFixed(decimals) : '—';
+}
+
+function fmtChf(n: number): string {
+  const sign = n < 0 ? '−' : '';
+  return `${sign}CHF ${Math.abs(Math.round(n)).toLocaleString('de-CH')}`;
 }
 
 // Sparkline generator helper
@@ -27,7 +41,7 @@ function Sparkline({ data, color = "#55B4A6" }: { data: number[]; color?: string
   const max = Math.max(...safeData);
   const min = Math.min(...safeData);
   const range = max - min || 1;
-  
+
   const coords = safeData.map((val, index) => {
     const x = safeData.length > 1 ? (index / (safeData.length - 1)) * width : 0;
     const y = height - ((val - min) / range) * (height - 6) - 3;
@@ -47,9 +61,7 @@ function Sparkline({ data, color = "#55B4A6" }: { data: number[]; color?: string
           <stop offset="100%" stopColor={safeColor} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* Area Fading Shading */}
       <path d={areaPath} fill={`url(#${gradId})`} />
-      {/* Stroke Line */}
       <path
         fill="none"
         stroke={safeColor}
@@ -91,7 +103,6 @@ function ProgressRing({
             <stop offset="100%" stopColor={safeColor === '#55B4A6' ? '#8ae8d8' : '#fbc06d'} />
           </linearGradient>
         </defs>
-        {/* Background Track */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -99,7 +110,6 @@ function ProgressRing({
           className="stroke-muted/40 fill-transparent"
           strokeWidth={strokeWidth - 2}
         />
-        {/* Animated Glowing Ring */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -184,39 +194,39 @@ function StatTiles({
   weight: number | null;
 }) {
   const isPassRate = rateLabel.toLowerCase().includes('pass');
-  
+
   const tiles = [
-    { 
-      label: 'Patients Audited', 
-      value: count.toString(), 
+    {
+      label: 'Patients Audited',
+      value: count.toString(),
       spark: [15, 25, 38, 48, 62, 79, 90, count],
       color: "#55B4A6",
       desc: "Total cohort members"
     },
-    { 
-      label: rateLabel, 
-      value: `${rateValue.toFixed(1)}%`, 
+    {
+      label: rateLabel,
+      value: `${rateValue.toFixed(1)}%`,
       spark: [isPassRate ? 42 : 55, 48, 51, 46, 52, 58, 60, rateValue],
       color: isPassRate ? "#55B4A6" : "#E9A23B",
       desc: "Overall program score"
     },
-    { 
-      label: 'Avg HbA1c Reduction', 
-      value: hba1c != null ? `${fmt(hba1c)} pp` : '—', 
+    {
+      label: 'Avg HbA1c Reduction',
+      value: hba1c != null ? `${fmt(hba1c)} pp` : '—',
       spark: [0.2, 0.3, 0.4, 0.4, 0.5, 0.5, 0.6, hba1c ?? 0],
       color: "#55B4A6",
       desc: "Glycemic improvement"
     },
-    { 
-      label: 'Avg CGM Time-in-Range', 
-      value: cgm != null ? `${fmt(cgm)}%` : '—', 
+    {
+      label: 'Avg CGM Time-in-Range',
+      value: cgm != null ? `${fmt(cgm)}%` : '—',
       spark: [65, 68, 70, 71, 72, 70, 73, cgm ?? 0],
       color: "#55B4A6",
       desc: "Continuous monitor alignment"
     },
-    { 
-      label: 'Avg Weight Loss', 
-      value: weight != null ? `${fmt(weight)}%` : '—', 
+    {
+      label: 'Avg Weight Loss',
+      value: weight != null ? `${fmt(weight)}%` : '—',
       spark: [2.0, 2.5, 3.1, 3.5, 4.0, 4.3, 4.7, weight ?? 0],
       color: "#55B4A6",
       desc: "Relative weight change"
@@ -252,18 +262,16 @@ function PatientRow({
   daysRemaining,
   isOpen,
   onToggle,
-  basePayment = 800,
 }: {
   patient: PatientRecord;
   evaluation: { ruleResults: { ruleId: string; label: string; actual: number | null; unit: string; passed: boolean }[] };
   daysRemaining?: number | null;
   isOpen: boolean;
   onToggle: () => void;
-  basePayment?: number;
 }) {
-  const attendanceRate = patient.total_sessions > 0
-    ? Math.round((patient.sessions_attended / patient.total_sessions) * 100)
-    : 0;
+  const attendanceRate = (patient.total_sessions ?? 0) > 0
+    ? Math.round((patient.sessions_attended / patient.total_sessions!) * 100)
+    : null;
 
   const passedCount = evaluation.ruleResults.filter(r => r.passed).length;
   const totalCount = evaluation.ruleResults.length;
@@ -271,18 +279,18 @@ function PatientRow({
 
   return (
     <div className={`border border-foreground/5 rounded-xl bg-background/35 hover:bg-background/65 hover:border-brand-teal/20 transition-all duration-300 overflow-hidden shadow-xs glass-panel`}>
-      <div 
+      <div
         onClick={onToggle}
         className="p-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-4 cursor-pointer select-none"
       >
         {/* Left Info */}
         <div className="flex items-center gap-3 min-w-0">
           <div className={`size-10 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 shadow-inner border transition-all duration-300 ${
-            isFailed 
-              ? 'bg-brand-amber/10 border-brand-amber/30 text-brand-amber shadow-brand-amber/5' 
+            isFailed
+              ? 'bg-brand-amber/10 border-brand-amber/30 text-brand-amber shadow-brand-amber/5'
               : 'bg-brand-teal/10 border-brand-teal/30 text-brand-teal shadow-brand-teal/5'
           }`}>
-            {patient.patient_id}
+            {patient.patient_id.slice(-2)}
           </div>
           <div>
             <span className="font-bold text-sm block text-foreground">{patient.patient_id}</span>
@@ -300,27 +308,18 @@ function PatientRow({
                   </span>
                 )}
               </div>
-              
-              {/* Financial Exposure Placement (Left Column to avoid right details overflow) */}
-              {isFailed ? (
-                <span className="w-fit inline-flex items-center gap-1 bg-brand-amber/10 border border-brand-amber/35 text-brand-amber text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
-                  <ShieldAlert className="size-3 shrink-0" />
-                  <span>
-                    {daysRemaining != null
-                      ? `CHF ${basePayment} pending clawback in ${daysRemaining}d`
-                      : `Escrow Clawback: CHF ${basePayment}`}
-                  </span>
-                </span>
-              ) : (
-                <span className="w-fit inline-flex items-center gap-1 bg-brand-teal/10 border border-brand-teal/35 text-brand-teal text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
-                  <CheckCircle2 className="size-3 shrink-0 text-brand-teal" />
-                  <span>
-                    {daysRemaining != null
-                      ? `CHF ${basePayment} Escrow Secure`
-                      : `Escrow Released: CHF ${basePayment}`}
-                  </span>
-                </span>
-              )}
+
+              <span className={`w-fit inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                isFailed
+                  ? 'bg-brand-amber/10 border-brand-amber/35 text-brand-amber'
+                  : 'bg-brand-teal/10 border-brand-teal/35 text-brand-teal'
+              }`}>
+                {isFailed ? (
+                  <><ShieldAlert className="size-3 shrink-0" />{passedCount}/{totalCount} goals met</>
+                ) : (
+                  <><CheckCircle2 className="size-3 shrink-0" />All goals met</>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -328,11 +327,11 @@ function PatientRow({
         {/* Dynamic Metric Badges */}
         <div className="flex flex-wrap gap-2 flex-1 min-w-0">
           {evaluation.ruleResults.map(r => (
-            <span 
+            <span
               key={r.ruleId}
               className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3 py-0.5 border font-semibold transition-all ${
-                r.passed 
-                  ? 'border-brand-teal/20 text-brand-teal bg-brand-teal/5' 
+                r.passed
+                  ? 'border-brand-teal/20 text-brand-teal bg-brand-teal/5'
                   : 'border-brand-amber/20 text-brand-amber bg-brand-amber/5'
               }`}
             >
@@ -345,30 +344,32 @@ function PatientRow({
 
         {/* Right Details/Session Progress */}
         <div className="flex items-center gap-4 shrink-0">
-          <div className="text-right hidden sm:block">
-            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Attendance</span>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-16 h-1.5 bg-muted/60 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${attendanceRate >= 80 ? 'bg-brand-teal' : 'bg-brand-amber'}`} 
-                  style={{ width: `${attendanceRate}%` }} 
-                />
+          {attendanceRate != null && (
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Attendance</span>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-16 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${attendanceRate >= 80 ? 'bg-brand-teal' : 'bg-brand-amber'}`}
+                    style={{ width: `${attendanceRate}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold tracking-tight tabular-nums text-foreground">{attendanceRate}%</span>
               </div>
-              <span className="text-xs font-bold tracking-tight tabular-nums text-foreground">{attendanceRate}%</span>
             </div>
-          </div>
+          )}
           <div className="size-8 rounded-full bg-muted/30 flex items-center justify-center border hover:bg-muted/50 transition-colors">
             {isOpen ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
           </div>
         </div>
       </div>
 
-      {/* Expanded view showing baseline vs follow-up values */}
+      {/* Expanded clinical view */}
       {isOpen && (
         <div className="border-t border-foreground/5 bg-muted/10 p-5 space-y-4 transition-all animate-in fade-in slide-in-from-top-2 duration-300">
           <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clinical Outcome Baseline comparison</h4>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            
+
             <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
               <div className="absolute top-2 right-2 text-brand-teal/20"><Activity className="size-8" /></div>
               <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">HbA1c Reduction</span>
@@ -410,13 +411,13 @@ function PatientRow({
 
             <div className="bg-background/60 border border-foreground/5 p-3.5 rounded-xl shadow-xs flex flex-col justify-between relative overflow-hidden group">
               <div className="absolute top-2 right-2 text-brand-teal/20"><User className="size-8" /></div>
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Coaching Program</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">Cost vs Benchmark</span>
               <div className="flex items-baseline justify-between mt-2 z-10">
-                <span className="text-base font-black text-foreground">
-                  {patient.sessions_attended} / {patient.total_sessions}
+                <span className={`text-base font-black ${patient.actual_cost_chf <= patient.benchmark_cost_chf ? 'text-brand-teal' : 'text-brand-amber'}`}>
+                  {fmtChf(patient.actual_cost_chf)}
                 </span>
                 <span className="text-[10px] text-muted-foreground/80 font-bold">
-                  {patient.total_sessions} sessions total
+                  Benchmark: {fmtChf(patient.benchmark_cost_chf)}
                 </span>
               </div>
             </div>
@@ -428,362 +429,7 @@ function PatientRow({
   );
 }
 
-const MOCK_NEEDS_REVIEW: ClassifiedPatient[] = [
-  {
-    patient: {
-      patient_id: "P001",
-      enrollment_date: "2025-06-01",
-      end_date: "2026-06-01",
-      last_measurement_date: "2026-06-01",
-      baseline_hba1c: 8.2,
-      latest_hba1c: 7.9,
-      cgm_time_in_range: 62.5,
-      baseline_weight_kg: 95.0,
-      latest_weight_kg: 94.0,
-      sessions_attended: 18,
-      total_sessions: 24
-    },
-    category: "fail",
-    daysRemaining: null,
-    unmetTargetLabels: ["HbA1c Reduction", "CGM Time-in-Range", "Weight Loss"],
-    targetGaps: [
-      { label: "HbA1c Reduction", gap: 0.2, unit: "pp" },
-      { label: "CGM Time-in-Range", gap: 7.5, unit: "%" },
-      { label: "Weight Loss", gap: 3.95, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P001",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.3,
-        cgm_time_in_range: 62.5,
-        weight_loss_pct: 1.05
-      },
-      patient: {
-        patient_id: "P001",
-        enrollment_date: "2025-06-01",
-        end_date: "2026-06-01",
-        last_measurement_date: "2026-06-01",
-        baseline_hba1c: 8.2,
-        latest_hba1c: 7.9,
-        cgm_time_in_range: 62.5,
-        baseline_weight_kg: 95.0,
-        latest_weight_kg: 94.0,
-        sessions_attended: 18,
-        total_sessions: 24
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 62.5, target: 70.0, operator: ">=", unit: "%", passed: false },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 1.05, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  },
-  {
-    patient: {
-      patient_id: "P002",
-      enrollment_date: "2025-05-15",
-      end_date: "2026-05-15",
-      last_measurement_date: "2026-05-15",
-      baseline_hba1c: 7.8,
-      latest_hba1c: 7.1,
-      cgm_time_in_range: 68.1,
-      baseline_weight_kg: 110.0,
-      latest_weight_kg: 108.5,
-      sessions_attended: 22,
-      total_sessions: 24
-    },
-    category: "fail",
-    daysRemaining: null,
-    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
-    targetGaps: [
-      { label: "CGM Time-in-Range", gap: 1.9, unit: "%" },
-      { label: "Weight Loss", gap: 3.64, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P002",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.7,
-        cgm_time_in_range: 68.1,
-        weight_loss_pct: 1.36
-      },
-      patient: {
-        patient_id: "P002",
-        enrollment_date: "2025-05-15",
-        end_date: "2026-05-15",
-        last_measurement_date: "2026-05-15",
-        baseline_hba1c: 7.8,
-        latest_hba1c: 7.1,
-        cgm_time_in_range: 68.1,
-        baseline_weight_kg: 110.0,
-        latest_weight_kg: 108.5,
-        sessions_attended: 22,
-        total_sessions: 24
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.7, target: 0.5, operator: ">=", unit: "pp", passed: true },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 68.1, target: 70.0, operator: ">=", unit: "%", passed: false },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 1.36, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  },
-  {
-    patient: {
-      patient_id: "P003",
-      enrollment_date: "2025-05-20",
-      end_date: "2026-05-20",
-      last_measurement_date: "2026-05-20",
-      baseline_hba1c: 9.1,
-      latest_hba1c: 8.8,
-      cgm_time_in_range: 72.0,
-      baseline_weight_kg: 88.0,
-      latest_weight_kg: 87.2,
-      sessions_attended: 14,
-      total_sessions: 24
-    },
-    category: "fail",
-    daysRemaining: null,
-    unmetTargetLabels: ["HbA1c Reduction", "Weight Loss"],
-    targetGaps: [
-      { label: "HbA1c Reduction", gap: 0.2, unit: "pp" },
-      { label: "Weight Loss", gap: 4.1, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P003",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.3,
-        cgm_time_in_range: 72.0,
-        weight_loss_pct: 0.91
-      },
-      patient: {
-        patient_id: "P003",
-        enrollment_date: "2025-05-20",
-        end_date: "2026-05-20",
-        last_measurement_date: "2026-05-20",
-        baseline_hba1c: 9.1,
-        latest_hba1c: 8.8,
-        cgm_time_in_range: 72.0,
-        baseline_weight_kg: 88.0,
-        latest_weight_kg: 87.2,
-        sessions_attended: 14,
-        total_sessions: 24
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 72.0, target: 70.0, operator: ">=", unit: "%", passed: true },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.91, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  }
-];
-
-const MOCK_ACTIVE_CAPITAL_AT_RISK: ClassifiedPatient[] = [
-  {
-    patient: {
-      patient_id: "P004",
-      enrollment_date: "2025-09-01",
-      end_date: "2026-08-31",
-      last_measurement_date: "2026-06-15",
-      baseline_hba1c: 8.5,
-      latest_hba1c: 8.3,
-      cgm_time_in_range: 64.2,
-      baseline_weight_kg: 102.0,
-      latest_weight_kg: 101.5,
-      sessions_attended: 15,
-      total_sessions: 20
-    },
-    category: "flagged",
-    daysRemaining: 76,
-    unmetTargetLabels: ["HbA1c Reduction", "CGM Time-in-Range", "Weight Loss"],
-    targetGaps: [
-      { label: "HbA1c Reduction", gap: 0.3, unit: "pp" },
-      { label: "CGM Time-in-Range", gap: 5.8, unit: "%" },
-      { label: "Weight Loss", gap: 4.51, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P004",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.2,
-        cgm_time_in_range: 64.2,
-        weight_loss_pct: 0.49
-      },
-      patient: {
-        patient_id: "P004",
-        enrollment_date: "2025-09-01",
-        end_date: "2026-08-31",
-        last_measurement_date: "2026-06-15",
-        baseline_hba1c: 8.5,
-        latest_hba1c: 8.3,
-        cgm_time_in_range: 64.2,
-        baseline_weight_kg: 102.0,
-        latest_weight_kg: 101.5,
-        sessions_attended: 15,
-        total_sessions: 20
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.2, target: 0.5, operator: ">=", unit: "pp", passed: false },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 64.2, target: 70.0, operator: ">=", unit: "%", passed: false },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.49, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  },
-  {
-    patient: {
-      patient_id: "P005",
-      enrollment_date: "2025-10-10",
-      end_date: "2026-10-09",
-      last_measurement_date: "2026-06-15",
-      baseline_hba1c: 7.6,
-      latest_hba1c: 7.5,
-      cgm_time_in_range: 61.8,
-      baseline_weight_kg: 94.0,
-      latest_weight_kg: 93.2,
-      sessions_attended: 12,
-      total_sessions: 18
-    },
-    category: "flagged",
-    daysRemaining: 116,
-    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
-    targetGaps: [
-      { label: "CGM Time-in-Range", gap: 8.2, unit: "%" },
-      { label: "Weight Loss", gap: 4.15, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P005",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.1,
-        cgm_time_in_range: 61.8,
-        weight_loss_pct: 0.85
-      },
-      patient: {
-        patient_id: "P005",
-        enrollment_date: "2025-10-10",
-        end_date: "2026-10-09",
-        last_measurement_date: "2026-06-15",
-        baseline_hba1c: 7.6,
-        latest_hba1c: 7.5,
-        cgm_time_in_range: 61.8,
-        baseline_weight_kg: 94.0,
-        latest_weight_kg: 93.2,
-        sessions_attended: 12,
-        total_sessions: 18
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.1, target: 0.5, operator: ">=", unit: "pp", passed: false },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 61.8, target: 70.0, operator: ">=", unit: "%", passed: false },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.85, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  },
-  {
-    patient: {
-      patient_id: "P006",
-      enrollment_date: "2025-07-01",
-      end_date: "2026-06-30",
-      last_measurement_date: "2026-06-15",
-      baseline_hba1c: 8.9,
-      latest_hba1c: 8.6,
-      cgm_time_in_range: 64.2,
-      baseline_weight_kg: 85.0,
-      latest_weight_kg: 84.5,
-      sessions_attended: 20,
-      total_sessions: 22
-    },
-    category: "flagged",
-    daysRemaining: 14,
-    unmetTargetLabels: ["CGM Time-in-Range", "Weight Loss"],
-    targetGaps: [
-      { label: "CGM Time-in-Range", gap: 5.8, unit: "%" },
-      { label: "Weight Loss", gap: 4.41, unit: "%" }
-    ],
-    evaluation: {
-      patientId: "P006",
-      passed: false,
-      metrics: {
-        hba1c_change: 0.3,
-        cgm_time_in_range: 64.2,
-        weight_loss_pct: 0.59
-      },
-      patient: {
-        patient_id: "P006",
-        enrollment_date: "2025-07-01",
-        end_date: "2026-06-30",
-        last_measurement_date: "2026-06-15",
-        baseline_hba1c: 8.9,
-        latest_hba1c: 8.6,
-        cgm_time_in_range: 64.2,
-        baseline_weight_kg: 85.0,
-        latest_weight_kg: 84.5,
-        sessions_attended: 20,
-        total_sessions: 22
-      },
-      ruleResults: [
-        { ruleId: "hba1c_change", label: "HbA1c Reduction", actual: 0.3, target: 0.5, operator: ">=", unit: "pp", passed: false },
-        { ruleId: "cgm_time_in_range", label: "CGM Time-in-Range", actual: 64.2, target: 70.0, operator: ">=", unit: "%", passed: false },
-        { ruleId: "weight_loss_pct", label: "Weight Loss", actual: 0.59, target: 5.0, operator: ">=", unit: "%", passed: false }
-      ]
-    }
-  }
-];
-
-function fmtChf(n: number): string {
-  return `CHF ${Math.round(n).toLocaleString('de-CH')}`;
-}
-
-function computeCohortFinancials(
-  contractType: string,
-  cohort: 'completed' | 'ongoing' | 'combined',
-  totalPatients: number,
-  passCount: number,
-  failCount: number,
-) {
-  switch (contractType) {
-    case 'p4p':
-      if (cohort === 'completed') return { escrow: 100_000, guaranteed: 80_000, performanceEarned: 11_000, performanceLost:  9_000, net:  82_000 };
-      if (cohort === 'ongoing')   return { escrow: 100_000, guaranteed: 80_000, performanceEarned: 12_000, performanceLost:  8_000, net:  84_000 };
-      /* combined */              return { escrow: 200_000, guaranteed: 160_000, performanceEarned: 23_000, performanceLost: 17_000, net: 166_000 };
-    case 'shared':
-      // CHF 800 guaranteed per patient; CHF 1 500 savings share per passer; CHF 600 risk per failer.
-      return {
-        escrow:           100_000,
-        guaranteed:         800 * totalPatients,
-        performanceEarned: 1_500 * passCount,
-        performanceLost:     600 * failCount,
-        net: 800 * totalPatients + 1_500 * passCount - 600 * failCount,
-      };
-    case 'bundled':
-      // CHF 800 guaranteed per patient; CHF 3 750 bundle savings per passer; CHF 2 500 overrun per failer.
-      return {
-        escrow:           25_000 * totalPatients,
-        guaranteed:          800 * totalPatients,
-        performanceEarned: 3_750 * passCount,
-        performanceLost:   2_500 * failCount,
-        net: 800 * totalPatients + 3_750 * passCount - 2_500 * failCount,
-      };
-    case 'capitation':
-      // CHF 2 160 capitation per patient (CHF 150 × 1.2 risk × 12 months); CHF 40 prevention bonus per passer.
-      return {
-        escrow:           2_160 * totalPatients,
-        guaranteed:       2_160 * totalPatients,
-        performanceEarned:   40 * passCount,
-        performanceLost:      0,
-        net: 2_160 * totalPatients + 40 * passCount,
-      };
-    default:
-      return { escrow: 0, guaranteed: 0, performanceEarned: 0, performanceLost: 0, net: 0 };
-  }
-}
-
-const CONTRACT_NAMES: Record<string, string> = {
-  p4p: 'Pay-for-Performance (P4P)',
-  shared: 'Shared Savings / Shared Risk',
-  bundled: 'Bundled Payments',
-  capitation: 'Capitation',
-};
+// ─── Financial metric display helpers ────────────────────────────────────────
 
 function FinancialCol({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
@@ -795,41 +441,146 @@ function FinancialCol({ label, value, sub, accent }: { label: string; value: str
   );
 }
 
-function CohortFinancials({
-  title,
-  label,
-  isFinal,
-  passCount,
-  failCount,
-  total,
-  fin,
-}: {
-  title: string;
-  label: string;
-  isFinal: boolean;
-  passCount: number;
-  failCount: number;
-  total: number;
-  fin: ReturnType<typeof computeCohortFinancials>;
-}) {
+function P4PMetrics({ m, isProjected }: { m: P4PCohortMetrics; isProjected: boolean }) {
   return (
-    <div className="flex-1 min-w-0 space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{title}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFinal ? 'bg-brand-teal/15 text-brand-teal' : 'bg-brand-amber/15 text-brand-amber'}`}>
-          {isFinal ? 'Final' : 'Current Exposure'}
-        </span>
-      </div>
-      <p className="text-[10px] text-muted-foreground font-semibold">{label} — {passCount} pass / {failCount} fail / {total} total</p>
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-        <FinancialCol label="Escrow Locked" value={fmtChf(fin.escrow)} sub="Total at stake" />
-        <FinancialCol label="Guaranteed" value={fmtChf(fin.guaranteed)} sub="Fixed portion" accent="text-brand-teal" />
-        <FinancialCol label="Performance Earned" value={fmtChf(fin.performanceEarned)} sub="Bonus unlocked" accent="text-brand-teal" />
-        <FinancialCol label="Returned to Insurer" value={fmtChf(fin.performanceLost)} sub="Penalties / clawback" accent={fin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'} />
+        <FinancialCol label="Total Payout" value={fmtChf(m.totalPayout)} sub={isProjected ? 'Projected' : 'Final'} />
+        <FinancialCol label="Guarantee" value={fmtChf(m.totalGuarantee)} sub="Fixed base" accent="text-brand-teal" />
+        <FinancialCol label="Bonus Earned" value={fmtChf(m.totalBonusEarned)} sub="Quality-weighted" accent="text-brand-teal" />
+        <FinancialCol
+          label="Bonus Utilization"
+          value={`${m.bonusPoolUtilization.toFixed(1)}%`}
+          sub="of bonus pool"
+          accent={m.bonusPoolUtilization >= 70 ? 'text-brand-teal' : 'text-brand-amber'}
+        />
       </div>
+      {Object.keys(m.perGoalPassRate).length > 0 && (
+        <div className="border-t border-foreground/5 pt-3 space-y-1.5">
+          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block">Per-Goal Achievement</span>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(m.perGoalPassRate).map(([ruleId, rate]) => (
+              <span key={ruleId} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${rate >= 70 ? 'border-brand-teal/30 text-brand-teal bg-brand-teal/5' : 'border-brand-amber/30 text-brand-amber bg-brand-amber/5'}`}>
+                {ruleId.replace(/_/g, ' ')}: {rate.toFixed(0)}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+function SharedMetrics({ m, isProjected }: { m: SharedCohortMetrics; isProjected: boolean }) {
+  const savingsColor = m.grossSavings >= 0 ? 'text-brand-teal' : 'text-brand-amber';
+  const netColor = m.providerNet >= 0 ? 'text-brand-teal' : 'text-brand-amber';
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <FinancialCol label="Total Benchmark" value={fmtChf(m.totalBenchmark)} sub="Risk-adj. targets" />
+      <FinancialCol label="Total Cost" value={fmtChf(m.totalCost)} sub={isProjected ? 'Projected' : 'Settled'} />
+      <FinancialCol label="Gross Savings" value={fmtChf(m.grossSavings)} sub="Benchmark − cost" accent={savingsColor} />
+      <FinancialCol label="Provider Net" value={fmtChf(m.providerNet)} sub={`${m.gateEligibleCount}/${m.count} gate-eligible`} accent={netColor} />
+    </div>
+  );
+}
+
+function BundledMetrics({ m, isProjected }: { m: BundledCohortMetrics; isProjected: boolean }) {
+  const netColor = m.netMargin >= 0 ? 'text-brand-teal' : 'text-brand-amber';
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <FinancialCol label="Bundle Revenue" value={fmtChf(m.totalBundleRevenue)} sub={`${m.count} episodes`} />
+      <FinancialCol label="Total Cost" value={fmtChf(m.totalCost)} sub={isProjected ? 'Projected' : 'Settled'} />
+      <FinancialCol label="Net Margin" value={fmtChf(m.netMargin)} sub={`${m.profitableCount} profitable`} accent={netColor} />
+      <FinancialCol label="Gate Failures" value={`${m.gateFailureCount}`} sub={`${m.lossMakingCount} loss-making`} accent={m.gateFailureCount > 0 ? 'text-brand-amber' : 'text-muted-foreground'} />
+    </div>
+  );
+}
+
+function CapitationMetrics({ m, isProjected }: { m: CapitationCohortMetrics; isProjected: boolean }) {
+  const netColor = m.netMargin >= 0 ? 'text-brand-teal' : 'text-brand-amber';
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      <FinancialCol label="Total Revenue" value={fmtChf(m.totalRevenue)} sub={`${m.count} patients`} />
+      <FinancialCol label="Total Cost" value={fmtChf(m.totalCost)} sub={isProjected ? 'Projected' : 'Settled'} />
+      <FinancialCol label="Net Margin" value={fmtChf(m.netMargin)} sub={`avg ${fmtChf(m.avgPerPatientMargin)}/pt`} accent={netColor} />
+      <FinancialCol label="Loss-making" value={`${m.marginNegativeCount}`} sub="patients in deficit" accent={m.marginNegativeCount > 0 ? 'text-brand-amber' : 'text-muted-foreground'} />
+    </div>
+  );
+}
+
+function CohortMetricsBlock({
+  report,
+  cohort,
+  isFinal,
+}: {
+  report: ContractReport;
+  cohort: 'completed' | 'active';
+  isFinal: boolean;
+}) {
+  const data = cohort === 'completed' ? report.completed : report.active;
+  const m = data.metrics;
+  const isProjected = !isFinal;
+
+  return (
+    <div className="flex-1 min-w-0 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+          {isFinal ? 'Completed Cohort' : 'Active Cohort'}
+        </span>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFinal ? 'bg-brand-teal/15 text-brand-teal' : 'bg-brand-amber/15 text-brand-amber'}`}>
+          {isFinal ? 'Final / Settled' : 'Projected'}
+        </span>
+      </div>
+      <p className="text-[10px] text-muted-foreground font-semibold">{m.count} patients</p>
+      {report.contractType === 'p4p' && <P4PMetrics m={m as P4PCohortMetrics} isProjected={isProjected} />}
+      {report.contractType === 'shared' && <SharedMetrics m={m as SharedCohortMetrics} isProjected={isProjected} />}
+      {report.contractType === 'bundled' && <BundledMetrics m={m as BundledCohortMetrics} isProjected={isProjected} />}
+      {report.contractType === 'capitation' && <CapitationMetrics m={m as CapitationCohortMetrics} isProjected={isProjected} />}
+    </div>
+  );
+}
+
+// Maps settlement action text to contract type
+function settlementText(report: ContractReport, isFinal: boolean): { pass: string; fail: string } {
+  const m = (isFinal ? report.completed : report.active).metrics;
+  switch (report.contractType) {
+    case 'p4p': {
+      const p = m as P4PCohortMetrics;
+      return {
+        pass: `➔ Total Payout: ${fmtChf(p.totalPayout)} (${p.bonusPoolUtilization.toFixed(0)}% bonus utilized)`,
+        fail: `➔ Bonus Pool Remaining: ${fmtChf(p.bonusPoolTotal - p.totalBonusEarned)}`,
+      };
+    }
+    case 'shared': {
+      const s = m as SharedCohortMetrics;
+      return {
+        pass: `➔ Provider Net: ${fmtChf(s.providerNet)} (${s.gateEligibleCount} gate-eligible)`,
+        fail: `➔ Gross Savings: ${fmtChf(s.grossSavings)} vs benchmark`,
+      };
+    }
+    case 'bundled': {
+      const b = m as BundledCohortMetrics;
+      return {
+        pass: `➔ Net Margin: ${fmtChf(b.netMargin)} (${b.profitableCount} profitable episodes)`,
+        fail: `➔ Gate Failures: ${b.gateFailureCount} / Loss-making: ${b.lossMakingCount}`,
+      };
+    }
+    case 'capitation': {
+      const c = m as CapitationCohortMetrics;
+      return {
+        pass: `➔ Net Margin: ${fmtChf(c.netMargin)} (avg ${fmtChf(c.avgPerPatientMargin)}/patient)`,
+        fail: `➔ Loss-making Patients: ${c.marginNegativeCount}`,
+      };
+    }
+  }
+}
+
+const CONTRACT_NAMES: Record<string, string> = {
+  p4p: 'Pay-for-Performance (P4P)',
+  shared: 'Shared Savings / Shared Risk',
+  bundled: 'Bundled Payments',
+  capitation: 'Capitation',
+};
 
 export default function Dashboard() {
   const { patients, thresholds, isLoading, contractType, contractParams } = useData();
@@ -837,28 +588,22 @@ export default function Dashboard() {
   const asOf = useMemo(() => getAsOfDate(patients) ?? '', [patients]);
   const { completed, active } = useMemo(() => partitionByStatus(patients, asOf), [patients, asOf]);
 
-  const summary      = useMemo(() => getCohortSummary(completed, thresholds), [completed, thresholds]);
+  const summary       = useMemo(() => getCohortSummary(completed, thresholds), [completed, thresholds]);
   const activeSummary = useMemo(() => getCohortSummary(active, thresholds), [active, thresholds]);
-  const rulePerf     = useMemo(() => getRulePerformance(completed, thresholds), [completed, thresholds]);
-  const classified   = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
-  const cats         = useMemo(() => getByCategory(classified), [classified]);
+  const rulePerf      = useMemo(() => getRulePerformance(completed, thresholds), [completed, thresholds]);
+  const classified    = useMemo(() => classifyCohort(patients, thresholds, asOf), [patients, thresholds, asOf]);
+  const cats          = useMemo(() => getByCategory(classified), [classified]);
 
-  const completedFin = useMemo(() => {
+  // Parse contract and compute report
+  const contract = useMemo(() => {
     if (!contractType) return null;
-    return computeCohortFinancials(contractType, 'completed', completed.length, summary.passed, summary.failed);
-  }, [contractType, contractParams, completed.length, summary.passed, summary.failed]);
+    return parseContract(contractType, contractParams, thresholds);
+  }, [contractType, contractParams, thresholds]);
 
-  const ongoingFin = useMemo(() => {
-    if (!contractType) return null;
-    return computeCohortFinancials(contractType, 'ongoing', active.length, cats.onTrack.length, cats.flagged.length);
-  }, [contractType, contractParams, active.length, cats.onTrack.length, cats.flagged.length]);
-
-  const combinedFin = useMemo(() => {
-    if (!contractType) return null;
-    const combinedPass = summary.passed + cats.onTrack.length;
-    const combinedFail = summary.failed + cats.flagged.length;
-    return computeCohortFinancials(contractType, 'combined', patients.length, combinedPass, combinedFail);
-  }, [contractType, contractParams, patients.length, summary.passed, summary.failed, cats.onTrack.length, cats.flagged.length]);
+  const report = useMemo(() => {
+    if (!contract) return null;
+    return computeContractReport(patients, contract, thresholds);
+  }, [patients, contract, thresholds]);
 
   // Search states
   const [needsReviewSearch, setNeedsReviewSearch] = useState('');
@@ -881,16 +626,21 @@ export default function Dashboard() {
   const onTrackRate = active.length > 0 ? (cats.onTrack.length / active.length) * 100 : 0;
   const flaggedRate = 100 - onTrackRate;
 
-  // Search filters for patient lists
-  const filteredNeedsReview = MOCK_NEEDS_REVIEW.filter(c =>
+  // Real classified patients for detail lists
+  const filteredNeedsReview = cats.fail.filter(c =>
     c.patient.patient_id.toLowerCase().includes(needsReviewSearch.toLowerCase()) ||
     c.unmetTargetLabels.some(label => label.toLowerCase().includes(needsReviewSearch.toLowerCase()))
   );
 
-  const filteredFlagged = MOCK_ACTIVE_CAPITAL_AT_RISK.filter(c =>
-    c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase()) ||
-    c.unmetTargetLabels.some(label => label.toLowerCase().includes(flaggedSearch.toLowerCase()))
-  );
+  const filteredFlagged = cats.flagged
+    .slice()
+    .sort((a, b) => (a.daysRemaining ?? 9999) - (b.daysRemaining ?? 9999))
+    .filter(c =>
+      c.patient.patient_id.toLowerCase().includes(flaggedSearch.toLowerCase()) ||
+      c.unmetTargetLabels.some(label => label.toLowerCase().includes(flaggedSearch.toLowerCase()))
+    );
+
+  const completedSettlement = report ? settlementText(report, true) : null;
 
   return (
     <div id="overview-section" className="space-y-10 scroll-mt-48">
@@ -955,7 +705,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Contract & Escrow Metrics ────────────────────────────────────────── */}
+      {/* ── Contract & Financial Metrics ─────────────────────────────────────── */}
       <div className="bg-background/80 border border-brand-teal/40 rounded-2xl p-6 shadow-md relative overflow-hidden group glass-panel">
         <div className="absolute top-0 right-0 p-2 opacity-5 translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500">
           <ShieldAlert className="size-36 text-brand-teal" />
@@ -963,7 +713,7 @@ export default function Dashboard() {
         <div className="space-y-5 z-10 relative">
           <div className="flex items-center gap-2">
             <div className="size-2.5 rounded-full bg-brand-teal animate-pulse" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Contract & Escrow Metrics</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Contract & Financial Metrics</h2>
             {contractType && (
               <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-teal/10 text-brand-teal border border-brand-teal/20">
                 {CONTRACT_NAMES[contractType] ?? contractType}
@@ -971,84 +721,136 @@ export default function Dashboard() {
             )}
           </div>
 
-          {!contractType ? (
+          {!report ? (
             <p className="text-sm text-muted-foreground font-medium">
               No payment contract configured. Complete the payment agreement step to see financial reporting here.
             </p>
           ) : (
             <div className="space-y-4">
-              {/* Two clickable cohort cards */}
+              {/* Two cohort blocks */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {completedFin && (
-                  <button
-                    onClick={() => scrollToId('completion-section', true)}
-                    className="text-left rounded-xl border border-brand-teal/20 bg-brand-teal/4 hover:bg-brand-teal/8 hover:border-brand-teal/35 transition-all p-5 group/card"
-                  >
-                    <CohortFinancials
-                      title="Completed Cohort"
-                      label="Treatment concluded"
-                      isFinal={true}
-                      passCount={summary.passed}
-                      failCount={summary.failed}
-                      total={completed.length}
-                      fin={completedFin}
-                    />
-                    <p className="text-[10px] font-bold text-brand-teal mt-4 group-hover/card:underline">
-                      View completed patients →
-                    </p>
-                  </button>
-                )}
-                {ongoingFin && (
-                  <button
-                    onClick={() => scrollToId('ongoing-section', true)}
-                    className="text-left rounded-xl border border-brand-amber/20 bg-brand-amber/4 hover:bg-brand-amber/8 hover:border-brand-amber/35 transition-all p-5 group/card"
-                  >
-                    <CohortFinancials
-                      title="Ongoing Cohort"
-                      label="Active treatment — current exposure"
-                      isFinal={false}
-                      passCount={cats.onTrack.length}
-                      failCount={cats.flagged.length}
-                      total={cats.onTrack.length + cats.flagged.length}
-                      fin={ongoingFin}
-                    />
-                    <p className="text-[10px] font-bold text-brand-amber mt-4 group-hover/card:underline">
-                      View ongoing patients →
-                    </p>
-                  </button>
-                )}
+                <button
+                  onClick={() => scrollToId('completion-section', true)}
+                  className="text-left rounded-xl border border-brand-teal/20 bg-brand-teal/4 hover:bg-brand-teal/8 hover:border-brand-teal/35 transition-all p-5 group/card"
+                >
+                  <CohortMetricsBlock report={report} cohort="completed" isFinal={true} />
+                  <p className="text-[10px] font-bold text-brand-teal mt-4 group-hover/card:underline">
+                    View completed patients →
+                  </p>
+                </button>
+                <button
+                  onClick={() => scrollToId('ongoing-section', true)}
+                  className="text-left rounded-xl border border-brand-amber/20 bg-brand-amber/4 hover:bg-brand-amber/8 hover:border-brand-amber/35 transition-all p-5 group/card"
+                >
+                  <CohortMetricsBlock report={report} cohort="active" isFinal={false} />
+                  <p className="text-[10px] font-bold text-brand-amber mt-4 group-hover/card:underline">
+                    View ongoing patients →
+                  </p>
+                </button>
               </div>
 
-              {/* Combined view */}
-              {combinedFin && (
-                <div className="rounded-xl border border-foreground/8 bg-background/60 p-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-foreground/8" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2">Combined — All Patients</span>
-                    <div className="h-px flex-1 bg-foreground/8" />
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-8">
-                    <div className="space-y-0.5 text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Escrow</span>
-                      <span className="text-lg font-black text-foreground">{fmtChf(combinedFin.escrow)}</span>
-                    </div>
-                    <div className="space-y-0.5 text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Guaranteed</span>
-                      <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.guaranteed)}</span>
-                    </div>
-                    <div className="space-y-0.5 text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Perf. Earned</span>
-                      <span className="text-lg font-black text-brand-teal">{fmtChf(combinedFin.performanceEarned)}</span>
-                    </div>
-                    <div className="space-y-0.5 text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Returned</span>
-                      <span className={`text-lg font-black ${combinedFin.performanceLost > 0 ? 'text-brand-amber' : 'text-muted-foreground'}`}>
-                        {fmtChf(combinedFin.performanceLost)}
-                      </span>
-                    </div>
-                  </div>
+              {/* Combined totals */}
+              <div className="rounded-xl border border-foreground/8 bg-background/60 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-foreground/8" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-2">Combined — All {patients.length} Patients</span>
+                  <div className="h-px flex-1 bg-foreground/8" />
                 </div>
-              )}
+                <div className="flex flex-wrap justify-center gap-8">
+                  {report.contractType === 'p4p' && (() => {
+                    const m = report.combined.metrics as P4PCohortMetrics;
+                    return (
+                      <>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Payout</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalPayout)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Guarantee</span>
+                          <span className="text-lg font-black text-brand-teal">{fmtChf(m.totalGuarantee)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Bonus Earned</span>
+                          <span className="text-lg font-black text-brand-teal">{fmtChf(m.totalBonusEarned)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Bonus Utilization</span>
+                          <span className="text-lg font-black text-foreground">{m.bonusPoolUtilization.toFixed(1)}%</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                  {report.contractType === 'shared' && (() => {
+                    const m = report.combined.metrics as SharedCohortMetrics;
+                    return (
+                      <>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Benchmark</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalBenchmark)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Cost</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalCost)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Gross Savings</span>
+                          <span className={`text-lg font-black ${m.grossSavings >= 0 ? 'text-brand-teal' : 'text-brand-amber'}`}>{fmtChf(m.grossSavings)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Provider Net</span>
+                          <span className={`text-lg font-black ${m.providerNet >= 0 ? 'text-brand-teal' : 'text-brand-amber'}`}>{fmtChf(m.providerNet)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                  {report.contractType === 'bundled' && (() => {
+                    const m = report.combined.metrics as BundledCohortMetrics;
+                    return (
+                      <>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Bundle Revenue</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalBundleRevenue)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Cost</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalCost)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Net Margin</span>
+                          <span className={`text-lg font-black ${m.netMargin >= 0 ? 'text-brand-teal' : 'text-brand-amber'}`}>{fmtChf(m.netMargin)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Gate Failures</span>
+                          <span className="text-lg font-black text-brand-amber">{m.gateFailureCount}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                  {report.contractType === 'capitation' && (() => {
+                    const m = report.combined.metrics as CapitationCohortMetrics;
+                    return (
+                      <>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Revenue</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalRevenue)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Total Cost</span>
+                          <span className="text-lg font-black text-foreground">{fmtChf(m.totalCost)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Net Margin</span>
+                          <span className={`text-lg font-black ${m.netMargin >= 0 ? 'text-brand-teal' : 'text-brand-amber'}`}>{fmtChf(m.netMargin)}</span>
+                        </div>
+                        <div className="space-y-0.5 text-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Avg / Patient</span>
+                          <span className={`text-lg font-black ${m.avgPerPatientMargin >= 0 ? 'text-brand-teal' : 'text-brand-amber'}`}>{fmtChf(m.avgPerPatientMargin)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1072,7 +874,7 @@ export default function Dashboard() {
               weight={summary.avgWeightLossPct}
             />
 
-            {/* Goal Success Rates — full width */}
+            {/* Goal Success Rates */}
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-bold text-foreground">Goal Success Rates</h3>
@@ -1100,7 +902,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Outcome breakdown */}
+            {/* Settlement Audit */}
             <Card id="outcome-breakdown" className="shadow-md bg-background/50 border-foreground/5 rounded-2xl glass-panel hover-glass-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold text-foreground">Settlement Audit: Verified Payout vs Forfeited Capital</CardTitle>
@@ -1125,12 +927,12 @@ export default function Dashboard() {
                             <span className="text-[10px] text-brand-teal font-bold ml-1.5">({summary.passRate.toFixed(1)}%)</span>
                           </div>
                         </div>
-                        <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
-                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
-                          <span className="font-black text-xs block text-foreground">
-                            ➔ Release: {fmtChf((completedFin?.guaranteed ?? 0) + (completedFin?.performanceEarned ?? 0))} to Provider
-                          </span>
-                        </div>
+                        {completedSettlement && (
+                          <div className="text-[10px] text-brand-teal font-bold leading-relaxed border-t border-brand-teal/15 pt-1.5 mt-1.5">
+                            <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                            <span className="font-black text-xs block text-foreground">{completedSettlement.pass}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col gap-1">
@@ -1144,12 +946,12 @@ export default function Dashboard() {
                             <span className="text-[10px] text-brand-amber font-bold ml-1.5">({failRate.toFixed(1)}%)</span>
                           </div>
                         </div>
-                        <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
-                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
-                          <span className="font-black text-xs block text-foreground">
-                            ➔ Clawback: {fmtChf(completedFin?.performanceLost ?? 0)} to Insurers
-                          </span>
-                        </div>
+                        {completedSettlement && (
+                          <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                            <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Settlement Action</span>
+                            <span className="font-black text-xs block text-foreground">{completedSettlement.fail}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1178,8 +980,6 @@ export default function Dashboard() {
                     Completed patients who did not meet all checked targets at the end of their program.
                   </CardDescription>
                 </div>
-                
-                {/* Search input */}
                 <div className="relative max-w-xs w-full">
                   <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -1193,7 +993,9 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 {filteredNeedsReview.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No patients match filters.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8 font-semibold">
+                    {cats.fail.length === 0 ? 'All completed patients met their targets.' : 'No patients match filters.'}
+                  </p>
                 ) : (
                   <div className="max-h-[480px] overflow-y-auto space-y-2.5 pr-1">
                     {filteredNeedsReview.map((c) => (
@@ -1203,7 +1005,6 @@ export default function Dashboard() {
                         evaluation={c.evaluation}
                         isOpen={expandedPatientId === c.patient.patient_id}
                         onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
-                        basePayment={Number(contractParams?.base_payment) || 800}
                       />
                     ))}
                   </div>
@@ -1267,18 +1068,28 @@ export default function Dashboard() {
                             {cats.flagged.length} <span className="text-[10px] text-brand-amber">({flaggedRate.toFixed(1)}%)</span>
                           </div>
                         </div>
-                        <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
-                          <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Escrow Risk Summary</span>
-                          <span className="block">{cats.flagged.length} Patients Off-Track</span>
-                          <span className="block text-xs mt-0.5 text-foreground font-black">
-                            ➔ {fmtChf(ongoingFin?.performanceLost ?? 0)} at Risk
-                          </span>
-                        </div>
+                        {report && (() => {
+                          const activeM = report.active.metrics;
+                          const riskSummary = report.contractType === 'p4p'
+                            ? `${fmtChf((activeM as P4PCohortMetrics).bonusPoolTotal - (activeM as P4PCohortMetrics).totalBonusEarned)} bonus at risk`
+                            : report.contractType === 'shared'
+                            ? `${fmtChf(Math.abs(Math.min((activeM as SharedCohortMetrics).providerNet, 0)))} exposure`
+                            : report.contractType === 'bundled'
+                            ? `${(activeM as BundledCohortMetrics).lossMakingCount} loss-making episodes`
+                            : `${(activeM as CapitationCohortMetrics).marginNegativeCount} deficit patients`;
+                          return (
+                            <div className="text-[10px] text-brand-amber font-bold leading-relaxed border-t border-brand-amber/15 pt-1.5 mt-1.5">
+                              <span className="text-muted-foreground font-semibold uppercase text-[8px] tracking-wider block mb-0.5">Exposure Summary</span>
+                              <span className="block">{cats.flagged.length} Patients Off-Track</span>
+                              <span className="block text-xs mt-0.5 text-foreground font-black">➔ {riskSummary}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
                   <p className="text-[10px] text-muted-foreground border-t border-muted-foreground/10 pt-3 w-full text-center font-semibold mt-6">
-                    "On track" = currently meeting all checked targets. Not a projection.
+                    "On track" = currently meeting all checked targets. Financial figures are projections only.
                   </p>
                 </CardContent>
               </Card>
@@ -1289,14 +1100,12 @@ export default function Dashboard() {
                   <div>
                     <CardTitle className="text-base font-bold flex items-center gap-1.5 text-brand-amber">
                       <ShieldAlert className="size-4 animate-pulse" />
-                      Active Capital at Risk (Value-at-Risk Framework)
+                      Active Capital at Risk
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Active patients not meeting one or more outcome targets, sorted by Value-at-Risk (CHF {Number(contractParams?.base_payment) || 800} at risk per patient).
+                      Active patients not yet meeting one or more outcome targets. Costs are projected to full episode.
                     </CardDescription>
                   </div>
-                  
-                  {/* Search input */}
                   <div className="relative max-w-xs w-full">
                     <Search className="size-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
@@ -1310,7 +1119,9 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   {filteredFlagged.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-8 font-semibold">No flagged active patients found.</p>
+                    <p className="text-sm text-muted-foreground text-center py-8 font-semibold">
+                      {cats.flagged.length === 0 ? 'All active patients are on track.' : 'No flagged patients match filters.'}
+                    </p>
                   ) : (
                     <div className="max-h-[480px] overflow-y-auto space-y-2.5 pr-1">
                       {filteredFlagged.map((c) => (
@@ -1321,7 +1132,6 @@ export default function Dashboard() {
                           daysRemaining={c.daysRemaining}
                           isOpen={expandedPatientId === c.patient.patient_id}
                           onToggle={() => setExpandedPatientId(prev => prev === c.patient.patient_id ? null : c.patient.patient_id)}
-                          basePayment={Number(contractParams?.base_payment) || 800}
                         />
                       ))}
                     </div>
