@@ -716,7 +716,7 @@ export default function WorkflowCanvas() {
         onOpenChange={open => { if (!open) handleUploadClose(); }}
       >
         <DialogContent className="max-w-5xl sm:max-w-5xl max-h-[90vh] overflow-y-auto p-0 sm:rounded-xl overflow-hidden">
-          <DataUpload showWorkflow={false} />
+          <DataUpload />
         </DialogContent>
       </Dialog>
 

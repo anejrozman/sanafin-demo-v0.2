@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Upload, FileText, CheckCircle, AlertCircle, Download, Loader2 } from 'lucide-react';
-import WorkflowView from './WorkflowView';
 import { useData } from '../../store/DataContext';
 import { parsePatientCsv } from '../../lib/parsePatientCsv';
 import { PATIENT_CSV_COLUMNS } from '../../lib/schema';
@@ -9,16 +8,12 @@ import { getAsOfDate, getStatusCounts } from '../../lib/selectors';
 
 interface DataUploadProps {
   initialTab?: 'sample' | 'upload';
-  onClose?: () => void;
-  onNodeClick?: (nodeId: 'injection' | 'verification' | 'reporting') => void;
-  showWorkflow?: boolean;
 }
 
-export default function DataUpload({ initialTab, onNodeClick, showWorkflow = true }: DataUploadProps) {
+export default function DataUpload({ initialTab }: DataUploadProps) {
   const {
-    patients, dataSource, thresholds, isLoading,
+    patients, dataSource, isLoading,
     processed, setProcessed,
-    animationSeen, setAnimationSeen,
     setUploadedPatients, clearUploadedData,
   } = useData();
 
@@ -144,10 +139,10 @@ export default function DataUpload({ initialTab, onNodeClick, showWorkflow = tru
   }
 
   return (
-    <div id="upload-section" className={`px-6 py-4 ${showWorkflow ? 'border-b border-muted-foreground/10 bg-background/5 rounded-2xl glass-panel' : 'p-6'}`}>
-      <div className={showWorkflow ? 'grid grid-cols-1 lg:grid-cols-12 gap-8 items-center' : ''}>
+    <div id="upload-section" className="px-6 py-4 p-6">
+      <div>
         {/* Left Column: Text and Actions */}
-        <div className={showWorkflow ? 'lg:col-span-4 space-y-4' : 'space-y-4'}>
+        <div className="space-y-4">
           <div className="space-y-1">
             <h1 className="text-xl font-extrabold tracking-tight text-foreground">Capture Outcomes</h1>
             <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
@@ -334,21 +329,6 @@ export default function DataUpload({ initialTab, onNodeClick, showWorkflow = tru
             </p>
           </div>
         </div>
-
-        {/* Right Column: WorkflowView Nodes — only shown in full (non-modal) mode */}
-        {showWorkflow && (
-          <div className="lg:col-span-8">
-            <WorkflowView
-              filename={processedFilename}
-              patients={patients}
-              thresholds={thresholds}
-              initiallyComplete={animationSeen}
-              onComplete={() => { setAnimationSeen(true); }}
-              onNodeClick={onNodeClick}
-              processed={processed}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
