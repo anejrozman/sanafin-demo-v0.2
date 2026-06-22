@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, ArrowRight, ArrowDown, Check, ScrollText } from 'lucide-react';
+import { ChevronDown, ArrowRight, Check, ScrollText, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import WelcomePage from './WelcomeModal';
@@ -88,53 +88,20 @@ function StepConnector() {
   );
 }
 
-// ── Dashboard transition arrow ────────────────────────────────────────────────
-
-function DashboardTransitionArrow() {
-  return (
-    <div className="flex flex-col items-center py-16 gap-6">
-      <motion.div
-        className="w-0.5 bg-gradient-to-b from-emerald-600/30 to-emerald-600"
-        initial={{ height: 0 }}
-        animate={{ height: 120 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5, duration: 0.4 }}
-        className="flex flex-col items-center gap-3"
-      >
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-        >
-          <ArrowDown className="size-12 text-emerald-600" />
-        </motion.div>
-        <span className="text-sm font-semibold text-muted-foreground">Opening Dashboard…</span>
-      </motion.div>
-      <motion.div
-        className="w-0.5 bg-gradient-to-b from-emerald-600 to-emerald-600/20"
-        initial={{ height: 0 }}
-        animate={{ height: 80 }}
-        transition={{ delay: 0.7, duration: 0.6, ease: 'easeOut' }}
-      />
-    </div>
-  );
-}
 
 // ── Single step node ──────────────────────────────────────────────────────────
 
 interface StepNodeProps {
   step: typeof STEPS[0];
   isCompleted: boolean;
+  isLoading?: boolean;
   summary: string;
   buttonLabel: string;
   onAction: () => void;
   nodeRef: (el: HTMLDivElement | null) => void;
 }
 
-function StepNode({ step, isCompleted, summary, buttonLabel, onAction, nodeRef }: StepNodeProps) {
+function StepNode({ step, isCompleted, isLoading, summary, buttonLabel, onAction, nodeRef }: StepNodeProps) {
   const { Icon } = step;
   return (
     <motion.div
@@ -187,9 +154,11 @@ function StepNode({ step, isCompleted, summary, buttonLabel, onAction, nodeRef }
         <Button
           size="lg"
           onClick={onAction}
-          className={`${step.color} ${step.hoverColor} text-white px-12 py-5 text-base font-bold rounded-xl shadow-lg transition-all`}
+          disabled={isLoading}
+          className={`${step.color} ${step.hoverColor} text-white px-12 py-5 text-base font-bold rounded-xl shadow-lg transition-all flex items-center gap-3`}
         >
-          {buttonLabel}
+          {isLoading && <Loader2 className="size-5 animate-spin" />}
+          {isLoading ? 'Opening Dashboard…' : buttonLabel}
         </Button>
       </div>
     </motion.div>
@@ -581,7 +550,7 @@ export default function WorkflowCanvas() {
       setView('dashboard');
       setTransitioning(false);
       window.scrollTo({ top: 0 });
-    }, 2000);
+    }, 700);
   }, [setAnimationSeen]);
 
   // ── Return from dashboard to a specific workflow node ─────────────────────
@@ -708,6 +677,7 @@ export default function WorkflowCanvas() {
                   <StepNode
                     step={STEPS[i]}
                     isCompleted={isCompleted(i)}
+                    isLoading={transitioning && i === STEPS.length - 1}
                     summary={summaries[i]}
                     buttonLabel={buttonLabel(i)}
                     onAction={() => handleNodeClick(i)}
@@ -717,8 +687,6 @@ export default function WorkflowCanvas() {
               ))}
             </AnimatePresence>
 
-            {/* Arrow animation that plays before switching to dashboard */}
-            {transitioning && <DashboardTransitionArrow />}
           </div>
         </div>
       )}
