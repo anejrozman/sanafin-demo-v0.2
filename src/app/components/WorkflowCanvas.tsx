@@ -255,7 +255,7 @@ const CONTRACT_TYPES: ContractType[] = [
     description: 'A single fixed price covers the entire care episode. The provider keeps the surplus when cost is under the bundle and passes the quality+complications gate; overages are absorbed regardless.',
     params: [
       EPISODE_MONTHS_PARAM,
-      { id: 'bundlePrice', label: 'Bundle Price per Episode', type: 'number', unit: 'CHF', defaultValue: 10000, min: 0 },
+      { id: 'bundlePrice', label: 'Bundle Price per Episode', type: 'number', unit: 'CHF', defaultValue: 8000, min: 0 },
       { id: 'complicationCap', label: 'Complication Cap (gate)', type: 'number', unit: 'events', defaultValue: 1, min: 0, max: 10 },
     ],
   },
@@ -265,7 +265,7 @@ const CONTRACT_TYPES: ContractType[] = [
     description: 'A fixed per-member-per-month rate regardless of utilization. The provider keeps the full margin when costs are low and absorbs the full downside when costs are high — highest risk model.',
     params: [
       EPISODE_MONTHS_PARAM,
-      { id: 'pmpm', label: 'Per-Member-Per-Month (PMPM)', type: 'number', unit: 'CHF', defaultValue: 500, min: 0 },
+      { id: 'pmpm', label: 'Per-Member-Per-Month (PMPM)', type: 'number', unit: 'CHF', defaultValue: 1200, min: 0 },
     ],
   },
 ];

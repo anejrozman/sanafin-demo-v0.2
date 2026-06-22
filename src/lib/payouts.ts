@@ -86,14 +86,14 @@ export function parseContract(
       return {
         type: 'bundled',
         episodeMonths,
-        bundlePrice: Number(params.bundlePrice ?? 10000),
+        bundlePrice: Number(params.bundlePrice ?? 8000),
         complicationCap: Number(params.complicationCap ?? 1),
       };
     case 'capitation':
       return {
         type: 'capitation',
         episodeMonths,
-        pmpm: Number(params.pmpm ?? 500),
+        pmpm: Number(params.pmpm ?? 1200),
       };
     default:
       return null;
