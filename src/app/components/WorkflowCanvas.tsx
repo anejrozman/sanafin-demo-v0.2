@@ -217,62 +217,55 @@ interface ContractType {
   params: ContractParam[];
 }
 
-const BASE_PAYMENT_PARAM: ContractParam = {
-  id: 'base_payment',
-  label: 'Base Payment per Patient',
+const EPISODE_MONTHS_PARAM: ContractParam = {
+  id: 'episodeMonths',
+  label: 'Program Length',
   type: 'number',
-  unit: 'CHF',
-  defaultValue: 800,
-  min: 0,
+  unit: 'months',
+  defaultValue: 6,
+  min: 1,
+  max: 36,
 };
 
 const CONTRACT_TYPES: ContractType[] = [
   {
     id: 'p4p',
     name: 'Pay-for-Performance (P4P)',
-    description: 'You earn bonuses when your patients achieve strong results on predefined quality benchmarks — such as prevention rates, safety scores, or patient satisfaction. Fall short of those benchmarks and your payment is reduced. Your income directly reflects the quality of care you deliver.',
+    description: 'A guaranteed base payment plus a bonus tied to outcome-target achievement. No cost risk — the provider earns more the better patients perform on clinical quality goals.',
     params: [
-      BASE_PAYMENT_PARAM,
-      { id: 'metric', label: 'Primary Quality Metric', type: 'select', options: ['Prevention Rate', 'Safety Score', 'Patient Satisfaction', 'Readmission Rate'] },
-      { id: 'threshold', label: 'Performance Threshold', type: 'number', unit: '%', defaultValue: 80, min: 0, max: 100 },
-      { id: 'bonus', label: 'Bonus Percentage', type: 'number', unit: '%', defaultValue: 10, min: 0, max: 50 },
-      { id: 'penalty', label: 'Penalty Percentage', type: 'number', unit: '%', defaultValue: 5, min: 0, max: 50 },
+      EPISODE_MONTHS_PARAM,
+      { id: 'totalPayoutPerPatient', label: 'Total Payout per Patient', type: 'number', unit: 'CHF', defaultValue: 5000, min: 0 },
+      { id: 'bonusFraction', label: 'Bonus Fraction', type: 'number', unit: '(0–1)', defaultValue: 0.3, min: 0, max: 1, step: 0.05 },
     ],
   },
   {
     id: 'shared',
     name: 'Shared Savings / Shared Risk',
-    description: 'When you keep the total cost of care below an agreed annual target, you share in those savings. Exceed the target and you absorb a portion of the loss. This model gives you a direct financial stake in running an efficient practice — similar to how Accountable Care Organizations operate.',
+    description: 'The provider shares savings when cost falls below the per-patient benchmark AND the quality gate is met. Under two-sided mode the provider also absorbs a share of overages.',
     params: [
-      BASE_PAYMENT_PARAM,
-      { id: 'cost_target', label: 'Annual Cost Target', type: 'number', unit: 'CHF', defaultValue: 100000, min: 0 },
-      { id: 'savings_share', label: 'Savings Share Rate', type: 'number', unit: '%', defaultValue: 30, min: 0, max: 100 },
-      { id: 'risk_share', label: 'Risk Share Rate', type: 'number', unit: '%', defaultValue: 20, min: 0, max: 100 },
-      { id: 'min_savings', label: 'Minimum Savings Threshold', type: 'number', unit: '%', defaultValue: 2, min: 0, max: 20 },
+      EPISODE_MONTHS_PARAM,
+      { id: 'savingsShare', label: 'Savings Share', type: 'number', unit: '(0–1)', defaultValue: 0.5, min: 0, max: 1, step: 0.05 },
+      { id: 'twoSided', label: 'Two-Sided (Shared Risk)', type: 'select', options: ['No', 'Yes'] },
+      { id: 'lossShare', label: 'Loss Share (if two-sided)', type: 'number', unit: '(0–1)', defaultValue: 0.5, min: 0, max: 1, step: 0.05 },
     ],
   },
   {
     id: 'bundled',
     name: 'Bundled Payments',
-    description: 'You receive one fixed payment for a complete care episode — such as a surgery or pregnancy. Deliver care efficiently and you keep what remains of the bundle. Complications or inefficiencies come out of your pocket, which makes prevention and clinical precision central to protecting your earnings.',
+    description: 'A single fixed price covers the entire care episode. The provider keeps the surplus when cost is under the bundle and passes the quality+complications gate; overages are absorbed regardless.',
     params: [
-      BASE_PAYMENT_PARAM,
-      { id: 'bundle_amount', label: 'Bundle Payment Amount', type: 'number', unit: 'CHF', defaultValue: 25000, min: 0 },
-      { id: 'episode_type', label: 'Care Episode Type', type: 'select', options: ['Surgery', 'Pregnancy', 'Chronic Care Management', 'Rehabilitation'] },
-      { id: 'savings_rate', label: 'Savings Retention Rate', type: 'number', unit: '%', defaultValue: 50, min: 0, max: 100 },
-      { id: 'risk_threshold', label: 'Risk Buffer Threshold', type: 'number', unit: '%', defaultValue: 10, min: 0, max: 30 },
+      EPISODE_MONTHS_PARAM,
+      { id: 'bundlePrice', label: 'Bundle Price per Episode', type: 'number', unit: 'CHF', defaultValue: 10000, min: 0 },
+      { id: 'complicationCap', label: 'Complication Cap (gate)', type: 'number', unit: 'events', defaultValue: 1, min: 0, max: 10 },
     ],
   },
   {
     id: 'capitation',
     name: 'Capitation',
-    description: 'You receive a fixed monthly payment for each patient on your panel, regardless of how often they visit or what services they need. The healthier your patients remain, the less care you need to provide — making proactive prevention and long-term health management your most effective financial strategy.',
+    description: 'A fixed per-member-per-month rate regardless of utilization. The provider keeps the full margin when costs are low and absorbs the full downside when costs are high — highest risk model.',
     params: [
-      BASE_PAYMENT_PARAM,
-      { id: 'per_patient', label: 'Per-Patient Monthly Payment', type: 'number', unit: 'CHF', defaultValue: 150, min: 0 },
-      { id: 'panel_size', label: 'Patient Panel Size', type: 'number', unit: 'patients', defaultValue: 500, min: 1 },
-      { id: 'risk_factor', label: 'Risk Adjustment Factor', type: 'number', unit: '×', defaultValue: 1.2, min: 0.1, step: 0.1 },
-      { id: 'prevention_bonus', label: 'Prevention Bonus Rate', type: 'number', unit: '%', defaultValue: 5, min: 0, max: 30 },
+      EPISODE_MONTHS_PARAM,
+      { id: 'pmpm', label: 'Per-Member-Per-Month (PMPM)', type: 'number', unit: 'CHF', defaultValue: 500, min: 0 },
     ],
   },
 ];
@@ -286,6 +279,7 @@ function PaymentModal({
   onConfirm: (type: string, params: Record<string, string | number>) => void;
   onClose: () => void;
 }) {
+  const { thresholds } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, string | number>>({});
 
@@ -303,13 +297,22 @@ function PaymentModal({
     ct.params.forEach(p => {
       defaults[p.id] = p.type === 'select' ? p.options![0] : (p.defaultValue ?? 0);
     });
+    // P4P: equal weights per enabled rule
+    if (selectedId === 'p4p') {
+      const enabled = thresholds.rules.filter(r => r.enabled);
+      const w = enabled.length > 0 ? 1 / enabled.length : 0;
+      for (const rule of enabled) {
+        defaults[`weight_${rule.id}`] = parseFloat(w.toFixed(4));
+      }
+    }
     setParams(defaults);
-  }, [selectedId]);
+  }, [selectedId, thresholds]);
 
   const selected = CONTRACT_TYPES.find(c => c.id === selectedId) ?? null;
-
   const setParam = (id: string, val: string | number) =>
     setParams(prev => ({ ...prev, [id]: val }));
+
+  const enabledRules = thresholds.rules.filter(r => r.enabled);
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
@@ -393,6 +396,38 @@ function PaymentModal({
                   )}
                 </div>
               ))}
+
+              {/* P4P: per-goal bonus weights */}
+              {selectedId === 'p4p' && enabledRules.length > 0 && (
+                <>
+                  <div className="col-span-2">
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="h-px flex-1 bg-foreground/5" />
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2">
+                        Bonus Weights — per outcome goal (should sum to 1)
+                      </p>
+                      <div className="h-px flex-1 bg-foreground/5" />
+                    </div>
+                  </div>
+                  {enabledRules.map(rule => (
+                    <div key={rule.id} className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground/80">{rule.label}</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={(params[`weight_${rule.id}`] as number) ?? (1 / enabledRules.length)}
+                          onChange={e => setParam(`weight_${rule.id}`, parseFloat(e.target.value) || 0)}
+                          step={0.05}
+                          min={0}
+                          max={1}
+                          className="flex-1 rounded-lg border border-foreground/10 bg-background px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-amber text-foreground"
+                        />
+                        <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">(0–1)</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             <Button
