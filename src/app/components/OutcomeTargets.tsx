@@ -7,7 +7,7 @@ import { Check, Info, Loader2, Pencil } from 'lucide-react';
 
 type SaveStatus = 'saved' | 'saving';
 
-function AutosaveIndicator({ status, justNow }: { status: SaveStatus; justNow: boolean }) {
+function AutosaveIndicator({ status }: { status: SaveStatus }) {
   return (
     <div className="flex items-center gap-1.5 text-xs mt-1">
       {status === 'saving' ? (
@@ -32,9 +32,7 @@ interface OutcomeTargetsProps {
 export default function OutcomeTargets({ onConfirm }: OutcomeTargetsProps = {}) {
   const { thresholds, setThresholds } = useData();
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
-  const [justNow, setJustNow] = useState(false);
   const didMountRef = useRef(false);
-  const justNowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!didMountRef.current) {
@@ -42,13 +40,9 @@ export default function OutcomeTargets({ onConfirm }: OutcomeTargetsProps = {}) 
       return;
     }
     setSaveStatus('saving');
-    setJustNow(false);
-    if (justNowTimerRef.current) clearTimeout(justNowTimerRef.current);
 
     const saveTimer = setTimeout(() => {
       setSaveStatus('saved');
-      setJustNow(true);
-      justNowTimerRef.current = setTimeout(() => setJustNow(false), 10_000);
     }, 800);
 
     return () => clearTimeout(saveTimer);
@@ -70,7 +64,7 @@ export default function OutcomeTargets({ onConfirm }: OutcomeTargetsProps = {}) 
             Define the clinical verification thresholds for the smart contract.
           </p>
         </div>
-        <AutosaveIndicator status={saveStatus} justNow={justNow} />
+        <AutosaveIndicator status={saveStatus} />
       </div>
 
       <div className="flex items-start gap-2.5 rounded-xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-xs font-semibold text-brand-teal/90 shadow-xs glass-panel">
