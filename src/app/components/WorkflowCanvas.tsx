@@ -394,6 +394,15 @@ function PaymentModal({
                       <span className="text-xs font-bold text-muted-foreground w-16 shrink-0">{param.unit}</span>
                     </div>
                   )}
+                  {selectedId === 'p4p' && param.id === 'totalPayoutPerPatient' && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Guaranteed per patient:{' '}
+                      <span className="font-semibold text-foreground/70">
+                        CHF {Math.round((Number(params.totalPayoutPerPatient) || 0) * (1 - (Number(params.bonusFraction) || 0))).toLocaleString('de-CH')}
+                      </span>
+                      {' '}= total × (1 − bonus fraction)
+                    </p>
+                  )}
                 </div>
               ))}
 
