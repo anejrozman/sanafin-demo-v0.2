@@ -1,5 +1,5 @@
 import { useState, Fragment } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { ArrowRight, Database, Target, ScrollText, Banknote } from 'lucide-react';
 import sanafinLogo from '../../assets/sanafin_logo.png';
@@ -170,18 +170,4 @@ export default function WelcomePage({
       </DialogContent>
     </Dialog>
   );
-}
-
-export function useWelcomeModal() {
-  const [open, setOpen] = useState(true);
-
-  const close = () => {
-    setOpen(false);
-  };
-
-  const reopen = () => {
-    setOpen(true);
-  };
-
-  return { open, close, reopen };
 }
