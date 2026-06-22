@@ -14,7 +14,7 @@ export const STEPS: WorkflowStep[] = [
   {
     id: 'select-workflow',
     label: 'Select Workflow',
-    description: 'Choose a clinical workflow template to begin your outcome verification process.',
+    description: 'Choose a SanaFin workflow template to begin your outcome verification process.',
     Icon: Workflow,
     color: 'bg-slate-600',
     hoverColor: 'hover:bg-slate-500',

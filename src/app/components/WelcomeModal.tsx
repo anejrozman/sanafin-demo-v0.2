@@ -60,13 +60,13 @@ export default function WelcomePage({
 
           {/* Intro text */}
           <p className="text-sm text-foreground/80 leading-relaxed font-medium text-center sm:text-left">
-            The demo focuses on guiding the user through the clinical workflow of managing a cohort of patients undergoing treatment and showcases how settlement of outcome based contracts is handled through SanaFin.
+            The demo focuses on guiding the user through the SanaFin workflow of managing a cohort of patients undergoing treatment and showcases how settlement of outcome based contracts is handled through SanaFin.
           </p>
 
           {/* Dropdown for Clinical Workflow */}
           <div className="flex flex-col gap-2 max-w-sm mx-auto w-full text-left bg-muted/40 p-4 rounded-xl border border-foreground/5 shadow-inner glass-panel">
             <label htmlFor="clinical-workflow" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Clinical Workflow Template
+              SanaFin Workflow Template
             </label>
             <select
               id="clinical-workflow"
@@ -88,7 +88,7 @@ export default function WelcomePage({
           {/* Clinical Workflow section */}
           <div className="flex flex-col items-center py-2 flex-1">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-              Clinical Workflow
+              SanaFin Workflow
             </p>
 
             {workflow === 'metabolic' && (

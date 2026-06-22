@@ -120,7 +120,7 @@ function AppSidebar() {
           {!isCollapsed ? (
             <SidebarGroupLabel className="flex w-full items-center justify-between pr-0">
               <span className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground/85">
-                Clinical Workflow
+                SanaFin Workflow
               </span>
               <SidebarTrigger className="size-11 [&_svg]:size-5 shrink-0 text-muted-foreground/80 hover:text-foreground transition-colors" />
             </SidebarGroupLabel>
